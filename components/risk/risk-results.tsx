@@ -1,6 +1,7 @@
 'use client'
 
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import { BarChart, Bar } from 'recharts'
+import { EnhancedBacktestChart } from '@/components/charts/enhanced-backtest-chart'
 import { RiskSimulationParams } from '@/app/(app)/risk/page'
 import { TrendingUp, AlertCircle } from 'lucide-react'
 
@@ -84,31 +85,10 @@ export function RiskResults({ results, params }: RiskResultsProps) {
 
       {/* Equity Curve */}
       <div className="border-t border-border-color pt-4">
-        <h4 className="text-sm font-medium text-text-primary mb-3">Equity Growth Projection</h4>
-        <ResponsiveContainer width="100%" height={200}>
-          <LineChart data={drawdownData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
-            <XAxis dataKey="trade" stroke="var(--text-secondary)" />
-            <YAxis stroke="var(--text-secondary)" />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: 'var(--surface-primary)',
-                border: '1px solid var(--border-color)',
-                borderRadius: '8px',
-                color: 'var(--text-primary)',
-              }}
-              formatter={(value: any) => `$${value.toFixed(2)}`}
-            />
-            <Line
-              type="monotone"
-              dataKey="equity"
-              stroke="var(--accent-blue)"
-              dot={false}
-              strokeWidth={2}
-              name="Projected Equity"
-            />
-          </LineChart>
-        </ResponsiveContainer>
+        <EnhancedBacktestChart 
+          data={drawdownData} 
+          title="Equity Growth Projection" 
+        />
       </div>
 
       {/* Warning */}

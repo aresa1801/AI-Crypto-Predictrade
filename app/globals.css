@@ -1,30 +1,8 @@
 @import 'tailwindcss';
 
-@theme {
-  --color-background: #0B0F19;
-  --color-surface-primary: #111827;
-  --color-surface-secondary: #1A202C;
-  --color-text-primary: #F3F4F6;
-  --color-text-secondary: #9CA3AF;
-  --color-border-color: #2D3748;
-  --color-accent-blue: #3B82F6;
-  --color-accent-emerald: #10B981;
-  --color-accent-amber: #F59E0B;
-  --color-accent-red: #EF4444;
-}
-
 :root {
   --font-geist-sans: 'Geist', 'Geist Fallback', sans-serif;
   --font-geist-mono: 'Geist Mono', 'Geist Mono Fallback', monospace;
-  color-scheme: dark;
-}
-
-html.dark {
-  color-scheme: dark;
-}
-
-html {
-  /* Dark mode colors for CSS usage */
   --background: #0B0F19;
   --surface-primary: #111827;
   --surface-secondary: #1A202C;
@@ -35,6 +13,16 @@ html {
   --accent-emerald: #10B981;
   --accent-amber: #F59E0B;
   --accent-red: #EF4444;
+  color-scheme: dark;
+}
+
+html.dark {
+  color-scheme: dark;
+}
+
+html {
+  background-color: var(--background);
+  color: var(--text-primary);
 }
 
 body {
@@ -45,13 +33,24 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+@theme {
+  --color-background: rgb(11 15 25 / <alpha-value>);
+  --color-surface-primary: rgb(17 24 39 / <alpha-value>);
+  --color-surface-secondary: rgb(26 32 44 / <alpha-value>);
+  --color-text-primary: rgb(243 244 246 / <alpha-value>);
+  --color-text-secondary: rgb(156 163 175 / <alpha-value>);
+  --color-border-color: rgb(45 55 72 / <alpha-value>);
+  --color-accent-blue: rgb(59 130 246 / <alpha-value>);
+  --color-accent-emerald: rgb(16 185 129 / <alpha-value>);
+  --color-accent-amber: rgb(245 158 11 / <alpha-value>);
+  --color-accent-red: rgb(239 68 68 / <alpha-value>);
+}
+
 @layer base {
-  /* Smooth transitions */
   * {
     @apply transition-colors duration-200;
   }
 
-  /* Typography */
   h1, h2, h3, h4, h5, h6 {
     @apply font-semibold tracking-tight;
   }
@@ -72,19 +71,16 @@ body {
     @apply text-sm leading-relaxed text-text-secondary;
   }
 
-  /* Focus styles for accessibility */
   :focus-visible {
     @apply outline-offset-2 outline-2 outline-accent-blue;
   }
 }
 
 @layer components {
-  /* Card styling */
   .card {
     @apply rounded-lg bg-surface-primary border border-border-color p-4;
   }
 
-  /* Button base styles */
   .btn-primary {
     @apply inline-flex items-center justify-center rounded-lg bg-accent-blue px-4 py-2 font-medium text-white hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
   }
@@ -93,7 +89,6 @@ body {
     @apply inline-flex items-center justify-center rounded-lg bg-surface-secondary border border-border-color px-4 py-2 font-medium text-text-primary hover:bg-surface-primary transition-colors;
   }
 
-  /* Badge styling */
   .badge {
     @apply inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium;
   }
