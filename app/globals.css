@@ -1,5 +1,18 @@
 @import 'tailwindcss';
 
+@theme {
+  --color-background: #0B0F19;
+  --color-surface-primary: #111827;
+  --color-surface-secondary: #1A202C;
+  --color-text-primary: #F3F4F6;
+  --color-text-secondary: #9CA3AF;
+  --color-border-color: #2D3748;
+  --color-accent-blue: #3B82F6;
+  --color-accent-emerald: #10B981;
+  --color-accent-amber: #F59E0B;
+  --color-accent-red: #EF4444;
+}
+
 :root {
   --font-geist-sans: 'Geist', 'Geist Fallback', sans-serif;
   --font-geist-mono: 'Geist Mono', 'Geist Mono Fallback', monospace;
@@ -11,7 +24,7 @@ html.dark {
 }
 
 html {
-  /* Dark mode colors */
+  /* Dark mode colors for CSS usage */
   --background: #0B0F19;
   --surface-primary: #111827;
   --surface-secondary: #1A202C;
