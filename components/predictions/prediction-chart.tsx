@@ -16,23 +16,23 @@ export function PredictionChart({ asset, timeframe }: { asset: Prediction; timef
         <AreaChart data={priceChartData}>
           <defs>
             <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.3} />
-              <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
+              <stop offset="5%" stopColor="var(--accent-blue)" stopOpacity={0.3} />
+              <stop offset="95%" stopColor="var(--accent-blue)" stopOpacity={0} />
             </linearGradient>
             <linearGradient id="colorBB" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#10B981" stopOpacity={0.1} />
-              <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
+              <stop offset="5%" stopColor="var(--accent-emerald)" stopOpacity={0.1} />
+              <stop offset="95%" stopColor="var(--accent-emerald)" stopOpacity={0} />
             </linearGradient>
           </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="#2D3748" />
-          <XAxis dataKey="time" stroke="#B0BAC9" />
-          <YAxis stroke="#B0BAC9" />
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
+          <XAxis dataKey="time" stroke="var(--text-secondary)" />
+          <YAxis stroke="var(--text-secondary)" />
           <Tooltip
             contentStyle={{
-              backgroundColor: '#111827',
-              border: '1px solid #2D3748',
+              backgroundColor: 'var(--surface-primary)',
+              border: '1px solid var(--border-color)',
               borderRadius: '8px',
-              color: '#F5F7FA',
+              color: 'var(--text-primary)',
             }}
             formatter={(value: any) => `$${value.toFixed(2)}`}
           />
@@ -40,7 +40,7 @@ export function PredictionChart({ asset, timeframe }: { asset: Prediction; timef
           <Area
             type="monotone"
             dataKey="price"
-            stroke="#3B82F6"
+            stroke="var(--accent-blue)"
             fill="url(#colorPrice)"
             dot={false}
             strokeWidth={2}
@@ -49,7 +49,7 @@ export function PredictionChart({ asset, timeframe }: { asset: Prediction; timef
           <Line
             type="monotone"
             dataKey="sma20"
-            stroke="#10B981"
+            stroke="var(--accent-emerald)"
             strokeDasharray="5 5"
             dot={false}
             strokeWidth={2}
@@ -58,7 +58,7 @@ export function PredictionChart({ asset, timeframe }: { asset: Prediction; timef
           <Line
             type="monotone"
             dataKey="bb_upper"
-            stroke="#F59E0B"
+            stroke="var(--accent-amber)"
             strokeDasharray="3 3"
             dot={false}
             strokeWidth={1}
@@ -67,7 +67,7 @@ export function PredictionChart({ asset, timeframe }: { asset: Prediction; timef
           <Line
             type="monotone"
             dataKey="bb_lower"
-            stroke="#F59E0B"
+            stroke="var(--accent-amber)"
             strokeDasharray="3 3"
             dot={false}
             strokeWidth={1}

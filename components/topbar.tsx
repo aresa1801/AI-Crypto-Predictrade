@@ -3,6 +3,7 @@
 import { usePathname } from 'next/navigation'
 import { Bell, User } from 'lucide-react'
 import { MobileNav } from './mobile-nav'
+import { ThemeToggle } from './theme-toggle'
 
 const breadcrumbs: Record<string, string> = {
   '/dashboard': 'Dashboard',
@@ -23,6 +24,7 @@ export function Topbar() {
         <h2 className="text-base lg:text-lg font-semibold text-text-primary">{title}</h2>
       </div>
       <div className="flex items-center gap-4 lg:gap-6">
+        <ThemeToggle />
         <button className="text-text-secondary hover:text-text-primary transition-colors p-2 hover:bg-surface-secondary rounded-lg">
           <Bell className="w-5 h-5" />
         </button>

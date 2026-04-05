@@ -87,22 +87,22 @@ export function RiskResults({ results, params }: RiskResultsProps) {
         <h4 className="text-sm font-medium text-text-primary mb-3">Equity Growth Projection</h4>
         <ResponsiveContainer width="100%" height={200}>
           <LineChart data={drawdownData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#2D3748" />
-            <XAxis dataKey="trade" stroke="#B0BAC9" />
-            <YAxis stroke="#B0BAC9" />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
+            <XAxis dataKey="trade" stroke="var(--text-secondary)" />
+            <YAxis stroke="var(--text-secondary)" />
             <Tooltip
               contentStyle={{
-                backgroundColor: '#111827',
-                border: '1px solid #2D3748',
+                backgroundColor: 'var(--surface-primary)',
+                border: '1px solid var(--border-color)',
                 borderRadius: '8px',
-                color: '#F5F7FA',
+                color: 'var(--text-primary)',
               }}
               formatter={(value: any) => `$${value.toFixed(2)}`}
             />
             <Line
               type="monotone"
               dataKey="equity"
-              stroke="#3B82F6"
+              stroke="var(--accent-blue)"
               dot={false}
               strokeWidth={2}
               name="Projected Equity"

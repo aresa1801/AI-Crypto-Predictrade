@@ -17,19 +17,19 @@ export function BacktestChart({ data }: { data: BacktestResult }) {
         <LineChart data={chartData}>
           <defs>
             <linearGradient id="colorEquity" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.3} />
-              <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
+              <stop offset="5%" stopColor="var(--accent-blue)" stopOpacity={0.3} />
+              <stop offset="95%" stopColor="var(--accent-blue)" stopOpacity={0} />
             </linearGradient>
           </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="#2D3748" />
-          <XAxis dataKey="date" stroke="#B0BAC9" />
-          <YAxis stroke="#B0BAC9" />
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
+          <XAxis dataKey="date" stroke="var(--text-secondary)" />
+          <YAxis stroke="var(--text-secondary)" />
           <Tooltip
             contentStyle={{
-              backgroundColor: '#111827',
-              border: '1px solid #2D3748',
+              backgroundColor: 'var(--surface-primary)',
+              border: '1px solid var(--border-color)',
               borderRadius: '8px',
-              color: '#F5F7FA',
+              color: 'var(--text-primary)',
             }}
             formatter={(value: any) => `$${value.toFixed(2)}`}
           />
@@ -37,7 +37,7 @@ export function BacktestChart({ data }: { data: BacktestResult }) {
           <Line
             type="monotone"
             dataKey="value"
-            stroke="#3B82F6"
+            stroke="var(--accent-blue)"
             strokeWidth={2}
             dot={false}
             isAnimationActive={false}

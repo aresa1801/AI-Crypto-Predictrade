@@ -13,14 +13,14 @@ interface GaugeProps {
 function ConfidenceGauge({ label, confidence, direction, asset }: GaugeProps) {
   const circumference = 2 * Math.PI * 45
   const strokeDashoffset = circumference - (confidence / 100) * circumference
-  const color = direction === 'up' ? '#10B981' : '#EF4444'
+  const color = direction === 'up' ? 'var(--accent-emerald)' : 'var(--accent-red)'
 
   return (
     <div className="flex flex-col items-center space-y-2">
       <div className="relative w-24 h-24 sm:w-28 sm:h-28 lg:w-32 lg:h-32">
         <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
           {/* Background circle */}
-          <circle cx="50" cy="50" r="45" fill="none" stroke="#2D3748" strokeWidth="3" />
+          <circle cx="50" cy="50" r="45" fill="none" stroke="var(--border-color)" strokeWidth="3" />
           {/* Progress circle */}
           <circle
             cx="50"
