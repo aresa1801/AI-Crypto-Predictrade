@@ -1,5 +1,18 @@
 @import 'tailwindcss';
 
+@theme {
+  --color-background: rgb(11 15 25 / <alpha-value>);
+  --color-surface-primary: rgb(17 24 39 / <alpha-value>);
+  --color-surface-secondary: rgb(26 32 44 / <alpha-value>);
+  --color-text-primary: rgb(243 244 246 / <alpha-value>);
+  --color-text-secondary: rgb(156 163 175 / <alpha-value>);
+  --color-border-color: rgb(45 55 72 / <alpha-value>);
+  --color-accent-blue: rgb(59 130 246 / <alpha-value>);
+  --color-accent-emerald: rgb(16 185 129 / <alpha-value>);
+  --color-accent-amber: rgb(245 158 11 / <alpha-value>);
+  --color-accent-red: rgb(239 68 68 / <alpha-value>);
+}
+
 :root {
   --font-geist-sans: 'Geist', 'Geist Fallback', sans-serif;
   --font-geist-mono: 'Geist Mono', 'Geist Mono Fallback', monospace;
@@ -31,19 +44,6 @@ body {
   font-family: var(--font-geist-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-}
-
-@theme {
-  --color-background: rgb(11 15 25 / <alpha-value>);
-  --color-surface-primary: rgb(17 24 39 / <alpha-value>);
-  --color-surface-secondary: rgb(26 32 44 / <alpha-value>);
-  --color-text-primary: rgb(243 244 246 / <alpha-value>);
-  --color-text-secondary: rgb(156 163 175 / <alpha-value>);
-  --color-border-color: rgb(45 55 72 / <alpha-value>);
-  --color-accent-blue: rgb(59 130 246 / <alpha-value>);
-  --color-accent-emerald: rgb(16 185 129 / <alpha-value>);
-  --color-accent-amber: rgb(245 158 11 / <alpha-value>);
-  --color-accent-red: rgb(239 68 68 / <alpha-value>);
 }
 
 @layer base {

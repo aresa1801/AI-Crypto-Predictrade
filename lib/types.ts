@@ -66,3 +66,9 @@ export interface UserSettings {
   notificationsEnabled: boolean
   theme: 'dark' | 'light'
 }
+
+export interface NormalDistribution {
+  mean: number
+  stdDev: number
+  confidence95: [number, number]
+}
