@@ -1,9 +1,14 @@
 'use client'
 
-import { predictions } from '@/lib/mock-data'
+import { useState, useEffect } from 'react'
+import { Prediction } from '@/lib/types'
+import { predictions as mockPredictions } from '@/lib/mock/data'
 import { TrendingUp, TrendingDown, Clock } from 'lucide-react'
+import { TableSkeleton } from '@/components/skeletons'
+import { ErrorBoundary } from '@/components/error-boundary'
+import { EmptyState } from '@/components/empty-state'
 
-function formatTime(date: Date) {
+function formatTime(date: Date): string {
   const now = new Date()
   const diff = now.getTime() - date.getTime()
   const hours = Math.floor(diff / (1000 * 60 * 60))
@@ -13,7 +18,7 @@ function formatTime(date: Date) {
   return `${minutes}m ago`
 }
 
-function getStatusColor(status: string) {
+function getStatusColor(status: string): string {
   switch (status) {
     case 'correct':
       return 'bg-accent-emerald/20 text-accent-emerald'
@@ -26,9 +31,56 @@ function getStatusColor(status: string) {
   }
 }
 
-export function RecentPredictions({ loading }: { loading: boolean }) {
-  if (loading) {
-    return <div className="card animate-pulse h-96" />
+function RecentPredictionsContent() {
+  const [state, setState] = useState<{
+    status: 'loading' | 'success' | 'error'
+    data: Prediction[] | null
+    error: Error | null
+  }>({ status: 'loading', data: null, error: null })
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        await new Promise((resolve) => setTimeout(resolve, Math.random() * 600 + 600))
+        setState({ status: 'success', data: mockPredictions, error: null })
+      } catch (error) {
+        setState({
+          status: 'error',
+          data: null,
+          error: error instanceof Error ? error : new Error('Failed to load predictions'),
+        })
+      }
+    }
+
+    loadData()
+  }, [])
+
+  if (state.status === 'loading') {
+    return <TableSkeleton rows={5} />
+  }
+
+  if (state.status === 'error') {
+    return (
+      <EmptyState
+        icon={<span className="text-3xl">⚠️</span>}
+        title="Failed to Load Predictions"
+        description={state.error?.message || 'Unable to fetch prediction data'}
+        action={{
+          label: 'Retry',
+          onClick: () => window.location.reload(),
+        }}
+      />
+    )
+  }
+
+  if (!state.data || state.data.length === 0) {
+    return (
+      <EmptyState
+        icon={<span className="text-3xl">📊</span>}
+        title="No Predictions"
+        description="No predictions available at the moment"
+      />
+    )
   }
 
   return (
@@ -50,7 +102,7 @@ export function RecentPredictions({ loading }: { loading: boolean }) {
             </tr>
           </thead>
           <tbody>
-            {predictions.map((pred) => (
+            {state.data.map((pred) => (
               <tr
                 key={pred.id}
                 className="border-b border-border-color hover:bg-surface-secondary transition-colors"
@@ -94,7 +146,9 @@ export function RecentPredictions({ loading }: { loading: boolean }) {
                   </div>
                 </td>
                 <td className="py-3 px-4 text-right">
-                  <p className="font-medium text-text-primary">${pred.predictedPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                  <p className="font-medium text-text-primary">
+                    ${pred.predictedPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </p>
                 </td>
                 <td className="py-3 px-4 text-right">
                   <p className={`font-medium ${pred.expectedValue >= 0 ? 'text-accent-emerald' : 'text-accent-red'}`}>
@@ -121,5 +175,17 @@ export function RecentPredictions({ loading }: { loading: boolean }) {
         </table>
       </div>
     </div>
+  )
+}
+
+export function RecentPredictions({ loading }: { loading?: boolean }) {
+  if (loading) {
+    return <TableSkeleton rows={5} />
+  }
+
+  return (
+    <ErrorBoundary>
+      <RecentPredictionsContent />
+    </ErrorBoundary>
   )
 }

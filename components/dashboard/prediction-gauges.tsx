@@ -1,7 +1,11 @@
 'use client'
 
-import { predictions } from '@/lib/mock-data'
+import { useState, useEffect } from 'react'
+import { Prediction } from '@/lib/types'
+import { predictions as mockPredictions } from '@/lib/mock/data'
 import { ArrowUp, ArrowDown } from 'lucide-react'
+import { CardSkeleton } from '@/components/skeletons'
+import { ErrorBoundary } from '@/components/error-boundary'
 
 interface GaugeProps {
   label: string
@@ -19,9 +23,7 @@ function ConfidenceGauge({ label, confidence, direction, asset }: GaugeProps) {
     <div className="flex flex-col items-center space-y-2">
       <div className="relative w-24 h-24 sm:w-28 sm:h-28 lg:w-32 lg:h-32">
         <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-          {/* Background circle */}
           <circle cx="50" cy="50" r="45" fill="none" stroke="var(--border-color)" strokeWidth="3" />
-          {/* Progress circle */}
           <circle
             cx="50"
             cy="50"
@@ -48,21 +50,59 @@ function ConfidenceGauge({ label, confidence, direction, asset }: GaugeProps) {
   )
 }
 
-export function PredictionGauges({ loading }: { loading: boolean }) {
-  if (loading) {
-    return <div className="card animate-pulse h-80" />
+function PredictionGaugesContent() {
+  const [state, setState] = useState<{
+    status: 'loading' | 'success' | 'error'
+    data: Prediction[] | null
+    error: Error | null
+  }>({ status: 'loading', data: null, error: null })
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        await new Promise((resolve) => setTimeout(resolve, Math.random() * 600 + 600))
+        const topPredictions = mockPredictions
+          .sort((a, b) => b.confidenceLevel - a.confidenceLevel)
+          .slice(0, 4)
+        setState({ status: 'success', data: topPredictions, error: null })
+      } catch (error) {
+        setState({
+          status: 'error',
+          data: null,
+          error: error instanceof Error ? error : new Error('Failed to load predictions'),
+        })
+      }
+    }
+
+    loadData()
+  }, [])
+
+  if (state.status === 'loading') {
+    return <CardSkeleton />
   }
 
-  const topPredictions = predictions
-    .sort((a, b) => b.confidenceLevel - a.confidenceLevel)
-    .slice(0, 4)
+  if (state.status === 'error') {
+    return (
+      <div className="card flex items-center justify-center py-8">
+        <p className="text-accent-red">Failed to load predictions</p>
+      </div>
+    )
+  }
+
+  if (!state.data || state.data.length === 0) {
+    return (
+      <div className="card flex items-center justify-center py-8">
+        <p className="text-text-secondary">No predictions available</p>
+      </div>
+    )
+  }
 
   return (
     <div className="card space-y-4">
       <h3 className="text-lg font-semibold text-text-primary">Top Predictions</h3>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-        {topPredictions.map((pred) => (
+        {state.data.map((pred) => (
           <ConfidenceGauge
             key={pred.id}
             label={`${pred.timeframe} Horizon`}
@@ -73,7 +113,6 @@ export function PredictionGauges({ loading }: { loading: boolean }) {
         ))}
       </div>
 
-      {/* Legend */}
       <div className="flex items-center gap-4 pt-4 border-t border-border-color text-xs">
         <div className="flex items-center gap-2">
           <ArrowUp className="w-4 h-4 text-accent-emerald" />
@@ -85,5 +124,17 @@ export function PredictionGauges({ loading }: { loading: boolean }) {
         </div>
       </div>
     </div>
+  )
+}
+
+export function PredictionGauges({ loading }: { loading?: boolean }) {
+  if (loading) {
+    return <CardSkeleton />
+  }
+
+  return (
+    <ErrorBoundary>
+      <PredictionGaugesContent />
+    </ErrorBoundary>
   )
 }
