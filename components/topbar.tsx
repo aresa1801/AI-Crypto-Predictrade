@@ -39,16 +39,16 @@ export function Topbar() {
         <div className="flex items-center gap-4 lg:gap-6">
           <ThemeToggle />
           <button
-            className="text-text-secondary hover:text-text-primary transition-all duration-200 p-2 hover:bg-surface-secondary rounded-lg"
+            className="text-text-secondary hover:text-text-primary transition-all duration-200 p-2 hover:bg-surface-secondary rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-blue focus:ring-offset-1 focus:ring-offset-background"
             aria-label="Notifications"
           >
-            <Bell className="w-5 h-5" />
+            <Bell className="w-5 h-5" aria-hidden="true" />
           </button>
           <button
-            className="text-text-secondary hover:text-text-primary transition-all duration-200 p-2 hover:bg-surface-secondary rounded-lg"
+            className="text-text-secondary hover:text-text-primary transition-all duration-200 p-2 hover:bg-surface-secondary rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-blue focus:ring-offset-1 focus:ring-offset-background"
             aria-label="User menu"
           >
-            <User className="w-5 h-5" />
+            <User className="w-5 h-5" aria-hidden="true" />
           </button>
         </div>
       </div>

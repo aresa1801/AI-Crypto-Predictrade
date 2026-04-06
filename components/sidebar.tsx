@@ -23,7 +23,11 @@ export function Sidebar() {
   const pathname = usePathname()
 
   return (
-    <aside className="hidden lg:flex fixed left-0 top-0 h-screen w-64 bg-surface-primary border-r border-border-color flex-col z-40">
+    <aside 
+      className="hidden lg:flex fixed left-0 top-0 h-screen w-64 bg-surface-primary border-r border-border-color flex-col z-40"
+      role="navigation"
+      aria-label="Main navigation sidebar"
+    >
       {/* Logo Header */}
       <div className="p-6 border-b border-border-color">
         <h1 className="text-xl font-bold text-accent-blue">PREDICTRADE</h1>
@@ -31,7 +35,7 @@ export function Sidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto py-4 px-3">
+      <nav className="flex-1 overflow-y-auto py-4 px-3" aria-label="Main menu">
         <ul className="space-y-2">
           {navItems.map((item) => {
             const Icon = item.icon
@@ -40,13 +44,14 @@ export function Sidebar() {
               <li key={item.href}>
                 <Link
                   href={item.href}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
+                  aria-current={active ? 'page' : undefined}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-accent-blue focus:ring-offset-2 focus:ring-offset-surface-primary ${
                     active
                       ? 'bg-accent-blue text-white shadow-lg shadow-accent-blue/20'
                       : 'text-text-secondary hover:text-text-primary hover:bg-surface-secondary'
                   }`}
                 >
-                  <Icon className="w-5 h-5 flex-shrink-0" />
+                  <Icon className="w-5 h-5 flex-shrink-0" aria-hidden="true" />
                   <span className="truncate">{item.label}</span>
                 </Link>
               </li>

@@ -29,16 +29,22 @@ export function MobileNav() {
       {/* Hamburger Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="p-2 hover:bg-surface-secondary rounded-lg text-text-secondary hover:text-text-primary transition-all duration-200"
-        aria-label="Toggle menu"
+        className="p-2 hover:bg-surface-secondary rounded-lg text-text-secondary hover:text-text-primary transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-accent-blue focus:ring-offset-1 focus:ring-offset-background"
+        aria-label="Toggle navigation menu"
         aria-expanded={isOpen}
+        aria-controls="mobile-menu"
       >
-        {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+        {isOpen ? <X className="w-5 h-5" aria-hidden="true" /> : <Menu className="w-5 h-5" aria-hidden="true" />}
       </button>
 
       {/* Mobile Menu - Slide Down */}
       {isOpen && (
-        <div className="absolute top-16 left-0 right-0 bg-surface-primary border-b border-border-color z-40 animate-in slide-in-from-top-2">
+        <div 
+          id="mobile-menu"
+          className="absolute top-16 left-0 right-0 bg-surface-primary border-b border-border-color z-40 animate-in slide-in-from-top-2"
+          role="navigation"
+          aria-label="Mobile navigation menu"
+        >
           <nav className="p-4 space-y-2">
             {navItems.map((item) => {
               const Icon = item.icon
@@ -48,13 +54,14 @@ export function MobileNav() {
                   key={item.href}
                   href={item.href}
                   onClick={() => setIsOpen(false)}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
+                  aria-current={active ? 'page' : undefined}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-accent-blue focus:ring-offset-1 focus:ring-offset-surface-primary ${
                     active
                       ? 'bg-accent-blue text-white shadow-lg shadow-accent-blue/20'
                       : 'text-text-secondary hover:text-text-primary hover:bg-surface-secondary'
                   }`}
                 >
-                  <Icon className="w-5 h-5 flex-shrink-0" />
+                  <Icon className="w-5 h-5 flex-shrink-0" aria-hidden="true" />
                   <span>{item.label}</span>
                 </Link>
               )
