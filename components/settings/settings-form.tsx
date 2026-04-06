@@ -5,12 +5,19 @@ import { UserSettings } from '@/lib/types'
 import { Eye, EyeOff } from 'lucide-react'
 
 interface SettingsFormProps {
-  initialSettings: UserSettings
   onSave: (settings: UserSettings) => void
+  isSaving?: boolean
 }
 
-export function SettingsForm({ initialSettings, onSave }: SettingsFormProps) {
-  const [settings, setSettings] = useState(initialSettings)
+const defaultSettings: UserSettings = {
+  modelPreference: 'balanced',
+  riskTolerance: 'moderate',
+  notificationsEnabled: true,
+  theme: 'dark',
+}
+
+export function SettingsForm({ onSave, isSaving = false }: SettingsFormProps) {
+  const [settings, setSettings] = useState<UserSettings>(defaultSettings)
   const [showApiKey, setShowApiKey] = useState(false)
   const [apiKey, setApiKey] = useState('')
 
@@ -121,8 +128,12 @@ export function SettingsForm({ initialSettings, onSave }: SettingsFormProps) {
       </div>
 
       {/* Save Button */}
-      <button onClick={handleSave} className="btn-primary w-full">
-        Save Settings
+      <button 
+        onClick={handleSave} 
+        disabled={isSaving}
+        className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        {isSaving ? 'Saving...' : 'Save Settings'}
       </button>
     </div>
   )
