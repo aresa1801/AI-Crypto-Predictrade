@@ -3,15 +3,22 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Menu, X, BarChart3, TrendingUp, Calculator, RotateCw, Settings, Home } from 'lucide-react'
+import { Menu, X, Home, TrendingUp, Calculator, RotateCw, Settings } from 'lucide-react'
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: Home },
-  { href: '/predictions', label: 'Predictions', icon: TrendingUp },
-  { href: '/risk', label: 'Risk Simulator', icon: Calculator },
-  { href: '/backtest', label: 'Backtest', icon: RotateCw },
-  { href: '/settings', label: 'Settings', icon: Settings },
+  { href: '/dashboard/predictions', label: 'Predictions', icon: TrendingUp },
+  { href: '/dashboard/risk', label: 'Risk Simulator', icon: Calculator },
+  { href: '/dashboard/backtest', label: 'Backtest', icon: RotateCw },
+  { href: '/dashboard/settings', label: 'Settings', icon: Settings },
 ]
+
+function isActive(href: string, pathname: string): boolean {
+  if (href === '/dashboard') {
+    return pathname === '/dashboard' || pathname === '/'
+  }
+  return pathname === href || pathname.startsWith(href + '/')
+}
 
 export function MobileNav() {
   const [isOpen, setIsOpen] = useState(false)
@@ -22,30 +29,32 @@ export function MobileNav() {
       {/* Hamburger Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="p-2 hover:bg-surface-secondary rounded-lg text-text-secondary hover:text-text-primary transition-colors"
+        className="p-2 hover:bg-surface-secondary rounded-lg text-text-secondary hover:text-text-primary transition-all duration-200"
+        aria-label="Toggle menu"
+        aria-expanded={isOpen}
       >
         {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
       </button>
 
-      {/* Mobile Menu */}
+      {/* Mobile Menu - Slide Down */}
       {isOpen && (
-        <div className="absolute top-16 left-0 right-0 bg-surface-primary border-b border-border-color z-40">
+        <div className="absolute top-16 left-0 right-0 bg-surface-primary border-b border-border-color z-40 animate-in slide-in-from-top-2">
           <nav className="p-4 space-y-2">
             {navItems.map((item) => {
               const Icon = item.icon
-              const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
+              const active = isActive(item.href, pathname)
               return (
                 <Link
                   key={item.href}
                   href={item.href}
                   onClick={() => setIsOpen(false)}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-                    isActive
-                      ? 'bg-accent-blue text-white'
+                  className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
+                    active
+                      ? 'bg-accent-blue text-white shadow-lg shadow-accent-blue/20'
                       : 'text-text-secondary hover:text-text-primary hover:bg-surface-secondary'
                   }`}
                 >
-                  <Icon className="w-4 h-4" />
+                  <Icon className="w-5 h-5 flex-shrink-0" />
                   <span>{item.label}</span>
                 </Link>
               )
