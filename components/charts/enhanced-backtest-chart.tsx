@@ -1,6 +1,6 @@
 'use client'
 
-import { useLayoutEffect, useRef, useState, memo } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import {
   LineChart,
   Line,
@@ -23,7 +23,7 @@ interface EnhancedBacktestChartProps {
   title?: string
 }
 
-function EnhancedBacktestChartComponent({
+export function EnhancedBacktestChart({
   data,
   title = 'Equity Curve',
 }: EnhancedBacktestChartProps) {
@@ -118,5 +118,3 @@ function EnhancedBacktestChartComponent({
     </div>
   )
 }
-
-export const EnhancedBacktestChart = memo(EnhancedBacktestChartComponent)

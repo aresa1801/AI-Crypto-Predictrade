@@ -4,16 +4,18 @@ import { predictions, cryptoAssets } from '@/lib/mock-data'
 import { Prediction } from '@/lib/types'
 
 interface PredictionFiltersProps {
+  selectedAsset: Prediction
   onAssetChange: (asset: Prediction) => void
-  onTimeframeChange: (tf: '1h' | '4h' | '1d') => void
+  timeframe: '1h' | '4h' | '1d' | '1w'
+  onTimeframeChange: (tf: '1h' | '4h' | '1d' | '1w') => void
 }
 
 export function PredictionFilters({
+  selectedAsset,
   onAssetChange,
+  timeframe,
   onTimeframeChange,
 }: PredictionFiltersProps) {
-  const selectedAsset = predictions[0]
-  const timeframe = '1d' as const
   return (
     <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
       <div className="flex-1">
@@ -24,7 +26,7 @@ export function PredictionFilters({
             const pred = predictions.find((p) => p.id === e.target.value)
             if (pred) onAssetChange(pred)
           }}
-          className="w-full px-4 py-2 rounded-lg bg-surface-secondary border border-border-color text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-blue focus:ring-offset-1 focus:ring-offset-surface-secondary"
+          className="w-full px-4 py-2 rounded-lg bg-surface-secondary border border-border-color text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-blue"
         >
           {predictions.map((pred) => (
             <option key={pred.id} value={pred.id}>
@@ -37,11 +39,11 @@ export function PredictionFilters({
       <div>
         <label className="block text-sm font-medium text-text-secondary mb-2">Timeframe</label>
         <div className="flex gap-2">
-          {(['1h', '4h', '1d'] as const).map((tf) => (
+          {(['1h', '4h', '1d', '1w'] as const).map((tf) => (
             <button
               key={tf}
               onClick={() => onTimeframeChange(tf)}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-accent-blue focus:ring-offset-1 focus:ring-offset-surface-secondary ${
+              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                 timeframe === tf
                   ? 'bg-accent-blue text-white'
                   : 'bg-surface-secondary text-text-secondary hover:text-text-primary'

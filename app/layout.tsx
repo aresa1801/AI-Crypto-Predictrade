@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { ThemeProvider } from 'next-themes'
 import { Analytics } from '@vercel/analytics/next'
-import { DisclaimerBanner } from '@/components/enterprise/disclaimer-banner'
 import './globals.css'
 
 const geist = Geist({ subsets: ["latin"], variable: '--font-geist-sans' })
@@ -44,10 +43,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${geist.variable} ${geistMono.variable} dark`} suppressHydrationWarning>
-      <body className="font-sans antialiased bg-background text-foreground pb-20">
+      <body className="font-sans antialiased bg-background text-foreground">
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} storageKey="predictrade-theme">
           {children}
-          <DisclaimerBanner />
           {process.env.NODE_ENV === 'production' && <Analytics />}
         </ThemeProvider>
       </body>

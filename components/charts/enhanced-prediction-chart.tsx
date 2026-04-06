@@ -1,6 +1,6 @@
 'use client'
 
-import { useLayoutEffect, useRef, useState, memo } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import {
   LineChart,
   Line,
@@ -24,7 +24,7 @@ interface EnhancedPredictionChartProps {
   modelVersion?: string
 }
 
-function EnhancedPredictionChartComponent({
+export function EnhancedPredictionChart({
   asset,
   data,
   modelVersion = '2.1',
@@ -230,5 +230,3 @@ function EnhancedPredictionChartComponent({
     </div>
   )
 }
-
-export const EnhancedPredictionChart = memo(EnhancedPredictionChartComponent)
