@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Prediction } from '@/lib/types'
-import { predictions as mockPredictions } from '@/lib/mock/data'
+import { fetchAIPredictions } from '@/lib/api/predictions'
 import { TrendingUp, TrendingDown, Clock } from 'lucide-react'
 import { TableSkeleton } from '@/components/skeletons'
 import { ErrorBoundary } from '@/components/error-boundary'
@@ -41,8 +41,9 @@ function RecentPredictionsContent() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        await new Promise((resolve) => setTimeout(resolve, Math.random() * 600 + 600))
-        setState({ status: 'success', data: mockPredictions, error: null })
+        // Fetch real AI predictions from API
+        const predictions = await fetchAIPredictions()
+        setState({ status: 'success', data: predictions, error: null })
       } catch (error) {
         setState({
           status: 'error',
@@ -53,6 +54,11 @@ function RecentPredictionsContent() {
     }
 
     loadData()
+    
+    // Refresh predictions every 5 minutes
+    const interval = setInterval(loadData, 300000)
+    
+    return () => clearInterval(interval)
   }, [])
 
   if (state.status === 'loading') {
@@ -84,79 +90,88 @@ function RecentPredictionsContent() {
   }
 
   return (
-    <div className="card">
-      <h3 className="text-base lg:text-lg font-semibold text-text-primary mb-4">All Predictions</h3>
+    <div className="card-gradient">
+      <div className="flex items-center gap-3 mb-5">
+        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-accent-pink to-accent-orange flex items-center justify-center shadow-lg shadow-accent-pink/30">
+          <Clock className="w-5 h-5 text-white" />
+        </div>
+        <h3 className="text-base lg:text-lg font-semibold gradient-text">Recent Predictions</h3>
+      </div>
 
       <div className="overflow-x-auto -mx-4 sm:-mx-0">
         <table className="w-full text-xs sm:text-sm">
           <thead>
-            <tr className="border-b border-border-color">
-              <th className="text-left py-3 px-4 text-text-secondary font-medium">Asset</th>
-              <th className="text-left py-3 px-4 text-text-secondary font-medium">Direction</th>
-              <th className="text-right py-3 px-4 text-text-secondary font-medium">Confidence</th>
-              <th className="text-right py-3 px-4 text-text-secondary font-medium">Target Price</th>
-              <th className="text-right py-3 px-4 text-text-secondary font-medium">Expected Value</th>
-              <th className="text-left py-3 px-4 text-text-secondary font-medium">Timeframe</th>
-              <th className="text-left py-3 px-4 text-text-secondary font-medium">Status</th>
-              <th className="text-left py-3 px-4 text-text-secondary font-medium">Created</th>
+            <tr className="border-b border-border-color/50">
+              <th className="text-left py-3 px-4 text-text-secondary font-semibold">Asset</th>
+              <th className="text-left py-3 px-4 text-text-secondary font-semibold">Direction</th>
+              <th className="text-right py-3 px-4 text-text-secondary font-semibold">Confidence</th>
+              <th className="text-right py-3 px-4 text-text-secondary font-semibold">Target Price</th>
+              <th className="text-right py-3 px-4 text-text-secondary font-semibold">Expected Value</th>
+              <th className="text-left py-3 px-4 text-text-secondary font-semibold">Timeframe</th>
+              <th className="text-left py-3 px-4 text-text-secondary font-semibold">Status</th>
+              <th className="text-left py-3 px-4 text-text-secondary font-semibold">Created</th>
             </tr>
           </thead>
           <tbody>
             {state.data.map((pred) => (
               <tr
                 key={pred.id}
-                className="border-b border-border-color hover:bg-surface-secondary transition-colors"
+                className="border-b border-border-color/30 hover:bg-surface-secondary/50 transition-all duration-200"
               >
                 <td className="py-3 px-4">
                   <div>
-                    <p className="font-medium text-text-primary">{pred.asset.symbol}</p>
+                    <p className="font-semibold text-text-primary">{pred.asset.symbol}</p>
                     <p className="text-xs text-text-secondary">{pred.asset.name}</p>
                   </div>
                 </td>
                 <td className="py-3 px-4">
-                  <div className="flex items-center gap-2">
+                  <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg w-fit ${
+                    pred.predictedDirection === 'up'
+                      ? 'bg-accent-emerald/20 border border-accent-emerald/30'
+                      : 'bg-accent-red/20 border border-accent-red/30'
+                  }`}>
                     {pred.predictedDirection === 'up' ? (
                       <>
                         <TrendingUp className="w-4 h-4 text-accent-emerald" />
-                        <span className="text-accent-emerald font-medium">Long</span>
+                        <span className="text-accent-emerald font-semibold">Long</span>
                       </>
                     ) : (
                       <>
                         <TrendingDown className="w-4 h-4 text-accent-red" />
-                        <span className="text-accent-red font-medium">Short</span>
+                        <span className="text-accent-red font-semibold">Short</span>
                       </>
                     )}
                   </div>
                 </td>
                 <td className="py-3 px-4 text-right">
                   <div className="flex items-center justify-end gap-2">
-                    <div className="w-16 bg-surface-secondary rounded-full h-2">
+                    <div className="w-20 bg-surface-secondary/50 rounded-full h-2.5 border border-border-color/30 overflow-hidden">
                       <div
-                        className={`h-2 rounded-full ${
+                        className={`h-full rounded-full transition-all duration-500 ${
                           pred.confidenceLevel > 70
-                            ? 'bg-accent-emerald'
+                            ? 'bg-gradient-to-r from-accent-emerald to-accent-teal'
                             : pred.confidenceLevel > 50
-                            ? 'bg-accent-amber'
-                            : 'bg-accent-red'
+                            ? 'bg-gradient-to-r from-accent-amber to-accent-orange'
+                            : 'bg-gradient-to-r from-accent-red to-accent-pink'
                         }`}
                         style={{ width: `${pred.confidenceLevel}%` }}
                       />
                     </div>
-                    <span className="font-medium text-text-primary w-10">{pred.confidenceLevel}%</span>
+                    <span className="font-bold text-text-primary w-10">{pred.confidenceLevel}%</span>
                   </div>
                 </td>
                 <td className="py-3 px-4 text-right">
-                  <p className="font-medium text-text-primary">
+                  <p className="font-bold text-text-primary">
                     ${pred.predictedPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </p>
                 </td>
                 <td className="py-3 px-4 text-right">
-                  <p className={`font-medium ${pred.expectedValue >= 0 ? 'text-accent-emerald' : 'text-accent-red'}`}>
-                    ${pred.expectedValue.toFixed(2)}
+                  <p className={`font-bold ${pred.expectedValue >= 0 ? 'text-accent-emerald' : 'text-accent-red'}`}>
+                    {pred.expectedValue >= 0 ? '+' : ''}${pred.expectedValue.toFixed(2)}
                   </p>
                 </td>
                 <td className="py-3 px-4">
-                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-surface-secondary text-text-secondary text-xs">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-accent-indigo/20 to-accent-purple/20 border border-accent-indigo/30 text-accent-indigo text-xs font-medium">
                     <Clock className="w-3 h-3" />
                     {pred.timeframe}
                   </span>
@@ -166,7 +181,7 @@ function RecentPredictionsContent() {
                     {pred.status.charAt(0).toUpperCase() + pred.status.slice(1)}
                   </span>
                 </td>
-                <td className="py-3 px-4 text-text-secondary text-xs">
+                <td className="py-3 px-4 text-text-secondary text-xs font-medium">
                   {formatTime(pred.createdAt)}
                 </td>
               </tr>

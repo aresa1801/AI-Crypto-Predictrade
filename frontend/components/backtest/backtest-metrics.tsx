@@ -18,17 +18,24 @@ function MetricCard({ label, value, unit, icon, color = 'neutral' }: MetricCardP
     danger: 'text-accent-red',
     neutral: 'text-text-primary',
   }
+  
+  const bgGradients = {
+    success: 'from-accent-emerald/10 to-accent-teal/10 border-accent-emerald/30',
+    warning: 'from-accent-amber/10 to-accent-orange/10 border-accent-amber/30',
+    danger: 'from-accent-red/10 to-accent-pink/10 border-accent-red/30',
+    neutral: 'from-accent-indigo/10 to-accent-purple/10 border-accent-indigo/30',
+  }
 
   return (
-    <div className="card space-y-2">
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-text-secondary">{label}</p>
+    <div className={`card-gradient bg-gradient-to-br ${bgGradients[color]} border hover:scale-105 transition-transform duration-300`}>
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-sm font-semibold text-text-secondary">{label}</p>
         {icon}
       </div>
       <div className="space-y-1">
-        <p className={`text-2xl font-bold ${colorClasses[color]}`}>
+        <p className={`text-3xl font-bold ${colorClasses[color]}`}>
           {value}
-          {unit && <span className="text-sm ml-1">{unit}</span>}
+          {unit && <span className="text-base ml-1 opacity-70">{unit}</span>}
         </p>
       </div>
     </div>

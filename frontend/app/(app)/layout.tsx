@@ -7,9 +7,9 @@ export default function AppLayout({
   children: React.ReactNode
 }) {
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-screen animated-gradient-bg overflow-hidden">
       <Sidebar />
-      <main className="flex-1 flex flex-col overflow-hidden lg:ml-64">
+      <main className="flex-1 flex flex-col overflow-hidden lg:ml-72">
         <Topbar />
         <div className="flex-1 overflow-auto">
           {children}

@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { MarketSnapshot as MarketSnapshotType, CryptoAsset } from '@/lib/types'
-import { marketSnapshot as mockMarketSnapshot, cryptoAssets as mockCryptoAssets } from '@/lib/mock/data'
-import { TrendingUp, TrendingDown } from 'lucide-react'
+import { fetchGlobalMarketData, fetchCryptoMarketData } from '@/lib/api/coingecko'
+import { TrendingUp, TrendingDown, BarChart3, Activity } from 'lucide-react'
 import { CardSkeleton } from '@/components/skeletons'
 import { ErrorBoundary } from '@/components/error-boundary'
 
@@ -21,13 +21,17 @@ function MarketSnapshotContent() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        // Simulate async fetch with delay
-        await new Promise((resolve) => setTimeout(resolve, Math.random() * 600 + 600))
+        // Fetch real data from CoinGecko API
+        const [marketData, assetsData] = await Promise.all([
+          fetchGlobalMarketData(),
+          fetchCryptoMarketData(),
+        ])
+
         setState({
           status: 'success',
           data: {
-            market: mockMarketSnapshot,
-            assets: mockCryptoAssets.slice(0, 3),
+            market: marketData,
+            assets: assetsData.slice(0, 3), // Top 3 assets
           },
           error: null,
         })
@@ -41,6 +45,11 @@ function MarketSnapshotContent() {
     }
 
     loadData()
+    
+    // Refresh data every 60 seconds
+    const interval = setInterval(loadData, 60000)
+    
+    return () => clearInterval(interval)
   }, [])
 
   if (state.status === 'loading') {
@@ -49,8 +58,11 @@ function MarketSnapshotContent() {
 
   if (state.status === 'error') {
     return (
-      <div className="card flex items-center justify-center py-8">
-        <p className="text-accent-red">Failed to load market snapshot</p>
+      <div className="card-gradient flex items-center justify-center py-8">
+        <div className="text-center">
+          <p className="text-accent-red mb-2">Failed to load market data</p>
+          <p className="text-xs text-text-secondary">Using CoinGecko API - Check your connection</p>
+        </div>
       </div>
     )
   }
@@ -62,46 +74,82 @@ function MarketSnapshotContent() {
   const { market, assets } = state.data
 
   return (
-    <div className="card space-y-4">
-      <h3 className="text-lg font-semibold text-text-primary">Market Snapshot</h3>
+    <div className="card-gradient space-y-4 h-full">
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-accent-blue to-accent-cyan flex items-center justify-center shadow-lg shadow-accent-blue/30">
+          <BarChart3 className="w-5 h-5 text-white" />
+        </div>
+        <div>
+          <h3 className="text-lg font-semibold gradient-text-blue">Market Snapshot</h3>
+          <p className="text-xs text-text-secondary">Live from CoinGecko</p>
+        </div>
+      </div>
 
       {/* Market Stats */}
       <div className="space-y-3">
-        <div className="flex justify-between items-center py-2 border-b border-border-color">
+        <div className="flex justify-between items-center p-3 rounded-lg bg-gradient-to-r from-accent-indigo/10 to-accent-purple/10 border border-accent-indigo/20">
           <span className="text-text-secondary text-sm">Total Market Cap</span>
-          <span className="text-text-primary font-semibold">
+          <span className="text-text-primary font-bold text-lg">
             ${(market.totalMarketCap / 1e12).toFixed(2)}T
           </span>
         </div>
-        <div className="flex justify-between items-center py-2 border-b border-border-color">
+        <div className="flex justify-between items-center p-3 rounded-lg bg-gradient-to-r from-accent-cyan/10 to-accent-blue/10 border border-accent-cyan/20">
           <span className="text-text-secondary text-sm">BTC Dominance</span>
-          <span className="text-text-primary font-semibold">{market.btcDominance.toFixed(1)}%</span>
+          <span className="text-accent-cyan font-bold text-lg">{market.btcDominance.toFixed(1)}%</span>
         </div>
-        <div className="flex justify-between items-center py-2">
-          <span className="text-text-secondary text-sm">Volatility Index</span>
-          <span className="text-accent-amber font-semibold">{market.volatilityIndex.toFixed(1)}</span>
+        <div className="flex justify-between items-center p-3 rounded-lg bg-gradient-to-r from-accent-amber/10 to-accent-orange/10 border border-accent-amber/20">
+          <div className="flex items-center gap-2">
+            <Activity className="w-4 h-4 text-accent-amber" />
+            <span className="text-text-secondary text-sm">Volatility Index</span>
+          </div>
+          <span className="text-accent-amber font-bold text-lg">{market.volatilityIndex.toFixed(1)}</span>
         </div>
       </div>
 
       {/* Top Assets */}
-      <div className="pt-4 border-t border-border-color space-y-2">
-        <h4 className="text-sm font-medium text-text-primary">Top Assets</h4>
-        {assets.map((asset) => (
-          <div key={asset.id} className="flex items-center justify-between p-2 bg-surface-secondary rounded">
-            <div>
-              <p className="text-sm font-medium text-text-primary">{asset.symbol}</p>
-              <p className="text-xs text-text-secondary">${asset.price.toFixed(2)}</p>
+      <div className="pt-4 border-t border-border-color/50 space-y-2">
+        <h4 className="text-sm font-semibold text-text-primary flex items-center gap-2">
+          <TrendingUp className="w-4 h-4 text-accent-emerald" />
+          Top Performers
+        </h4>
+        <div className="space-y-2">
+          {assets.map((asset, index) => (
+            <div key={asset.id} className="group p-3 bg-surface-secondary/50 backdrop-blur-sm rounded-lg border border-border-color/30 hover:border-accent-purple/30 transition-all duration-300 hover:shadow-lg">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm ${
+                    index === 0 ? 'bg-gradient-to-br from-accent-purple to-accent-pink text-white' :
+                    index === 1 ? 'bg-gradient-to-br from-accent-blue to-accent-cyan text-white' :
+                    'bg-gradient-to-br from-accent-indigo to-accent-purple text-white'
+                  }`}>
+                    #{index + 1}
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-text-primary">{asset.symbol}</p>
+                    <p className="text-xs text-text-secondary">${asset.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                  </div>
+                </div>
+                <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg ${
+                  asset.change24h >= 0 
+                    ? 'bg-accent-emerald/20 text-accent-emerald border border-accent-emerald/30' 
+                    : 'bg-accent-red/20 text-accent-red border border-accent-red/30'
+                }`}>
+                  {asset.change24h >= 0 ? (
+                    <TrendingUp className="w-3.5 h-3.5" />
+                  ) : (
+                    <TrendingDown className="w-3.5 h-3.5" />
+                  )}
+                  <span className="text-sm font-bold">{Math.abs(asset.change24h).toFixed(2)}%</span>
+                </div>
+              </div>
             </div>
-            <div className={`flex items-center gap-1 ${asset.change24h >= 0 ? 'text-accent-emerald' : 'text-accent-red'}`}>
-              {asset.change24h >= 0 ? (
-                <TrendingUp className="w-4 h-4" />
-              ) : (
-                <TrendingDown className="w-4 h-4" />
-              )}
-              <span className="text-sm font-medium">{Math.abs(asset.change24h).toFixed(2)}%</span>
-            </div>
-          </div>
-        ))}
+          ))}
+        </div>
+      </div>
+      
+      {/* Last Updated */}
+      <div className="text-xs text-text-secondary text-center pt-2 border-t border-border-color/30">
+        Last updated: {new Date().toLocaleTimeString()}
       </div>
     </div>
   )
