@@ -1,6 +1,6 @@
 'use client'
 
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useLayoutEffect, useRef, useState, useMemo, memo } from 'react'
 import { LineChart, Line, ResponsiveContainer } from 'recharts'
 import { chartColors } from '@/lib/utils/chart-utils'
 
@@ -12,7 +12,7 @@ interface SparklineProps {
   width?: number
 }
 
-export function Sparkline({
+function SparklineComponent({
   data,
   dataKey = 'value',
   color = 'primary',
@@ -38,23 +38,33 @@ export function Sparkline({
     return () => resizeObserver.disconnect()
   }, [])
 
-  const colorMap: Record<string, string> = {
-    success: chartColors.success,
-    danger: chartColors.danger,
-    primary: chartColors.primary,
-    warning: chartColors.warning,
-  }
+  // Memoize color calculation
+  const lineColor = useMemo(() => {
+    const colorMap: Record<string, string> = {
+      success: chartColors.success,
+      danger: chartColors.danger,
+      primary: chartColors.primary,
+      warning: chartColors.warning,
+    }
+    return colorMap[color] || chartColors.primary
+  }, [color])
 
-  const lineColor = colorMap[color] || chartColors.primary
+  // Sample data if too many points (> 50 for sparklines)
+  const sampledData = useMemo(() => {
+    if (!data || data.length === 0) return []
+    if (data.length <= 50) return data
+    const step = Math.ceil(data.length / 50)
+    return data.filter((_, i) => i % step === 0)
+  }, [data])
 
-  if (!data || data.length === 0) {
+  if (!sampledData || sampledData.length === 0) {
     return <div style={{ width, height }} className="bg-surface-secondary rounded" />
   }
 
   return (
     <div ref={containerRef} style={{ width: '100%', height }}>
       <ResponsiveContainer width="100%" height={height}>
-        <LineChart data={data} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
+        <LineChart data={sampledData} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
           <Line
             type="monotone"
             dataKey={dataKey}
@@ -68,3 +78,6 @@ export function Sparkline({
     </div>
   )
 }
+
+// Memoize the component to prevent unnecessary re-renders
+export const Sparkline = memo(SparklineComponent)
