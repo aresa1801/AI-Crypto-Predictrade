@@ -47,6 +47,12 @@ A professional, full-stack AI-powered cryptocurrency spot trading platform with 
 
 ## ✨ Features
 
+### 🎯 **Spot Trading Focused**
+- **No Leverage/Margin**: Pure spot trading for safer crypto investments
+- **Direct Ownership**: Own actual cryptocurrencies, not derivatives
+- **Portfolio Management**: Comprehensive tracking of spot holdings
+- **AI-Optimized**: Signals and strategies designed specifically for spot markets
+
 ### 🤖 AI Multi-Agent System (CrewAI)
 - **Data Aggregator Agent**: Collects market data, sentiment, and technical indicators
 - **Strategy Agent**: Generates trading signals using LLM and technical analysis
@@ -175,23 +181,32 @@ cp .env.example .env.local
 pnpm dev
 ```
 
+## 📚 Documentation
+
+- **[Spot Trading Guide](SPOT_TRADING_GUIDE.md)** - Comprehensive guide to spot trading on this platform
+- **[Risk Simulator Guide](RISK_SIMULATOR_GUIDE.md)** - How to use risk analysis tools
+- **[Data Architecture](DATA_ARCHITECTURE.md)** - System data flow and architecture
+- **[Chart Enhancements](CHART_ENHANCEMENTS.md)** - Visualization features
+- **[Dark Mode Setup](DARK_MODE_SETUP.md)** - UI theming guide
+
 ## 🔒 Security Configuration
 
 ### API Key Management
 1. **Never hardcode API keys** - Use environment variables
 2. **IP Whitelisting** - Configure static IPs in Railway for exchange API access
-3. **Minimal Permissions** - Create API keys with only required scopes (no withdrawal)
+3. **Minimal Permissions** - Create API keys with only spot trading access (no withdrawal, no futures/margin)
 4. **Key Rotation** - Rotate keys every 3-6 months
+5. **Spot Trading Only** - Ensure exchange APIs are restricted to spot markets
 
 ### Environment Variables
 
 | Variable | Description |
 |----------|-------------|
-| `EXCHANGE_BINANCE_API_KEY` | Binance API Key |
+| `EXCHANGE_BINANCE_API_KEY` | Binance API Key (Spot Trading Only) |
 | `EXCHANGE_BINANCE_API_SECRET` | Binance Secret |
 | `EXCHANGE_BINANCE_TESTNET` | Use testnet (true/false) |
 | `AI_OPENROUTER_API_KEY` | OpenRouter API Key for LLM |
-| `RISK_MAX_POSITION_SIZE_PCT` | Max position size (default: 2%) |
+| `RISK_MAX_POSITION_SIZE_PCT` | Max spot position size (default: 2%) |
 | `RISK_DAILY_LOSS_LIMIT_PCT` | Daily loss limit (default: 5%) |
 | `RISK_MAX_DRAWDOWN_PCT` | Max drawdown (default: 15%) |
 
@@ -206,8 +221,8 @@ Once the backend is running, access:
 | Endpoint | Description |
 |----------|-------------|
 | `GET /api/v1/bot/status` | Get bot status |
-| `POST /api/v1/bot/start` | Start trading bot |
-| `POST /api/v1/bot/stop` | Stop trading bot |
+| `POST /api/v1/bot/start` | Start spot trading bot |
+| `POST /api/v1/bot/stop` | Stop spot trading bot |
 | `GET /api/v1/market/price/{symbol}` | Get market price |
 | `GET /api/v1/risk/metrics` | Get risk metrics |
 | `POST /api/v1/risk/kill-switch` | Control kill switch |
@@ -218,13 +233,33 @@ Once the backend is running, access:
 
 ### Railway (Backend)
 1. Connect your GitHub repository
-2. Configure environment variables
+2. Configure environment variables (ensure spot trading settings)
 3. Deploy using `railway.toml` configuration
 
 ### Vercel (Frontend)
 1. Connect your GitHub repository
 2. Set `NEXT_PUBLIC_API_URL` environment variable
 3. Deploy automatically
+
+## ⚠️ Important Notes
+
+### Spot Trading Only
+This platform is **specifically designed for spot cryptocurrency trading**:
+
+- ✅ **Supported**: Spot market buy/sell orders
+- ✅ **Supported**: Direct cryptocurrency ownership
+- ✅ **Supported**: Portfolio tracking and management
+- ❌ **NOT Supported**: Futures trading
+- ❌ **NOT Supported**: Margin/leverage trading
+- ❌ **NOT Supported**: Short selling (unless you own the asset)
+- ❌ **NOT Supported**: Perpetual contracts
+
+### Risk Disclaimer
+- Cryptocurrency trading involves substantial risk
+- Past AI performance does not guarantee future results
+- Only trade with funds you can afford to lose
+- This platform is for informational purposes only
+- Not financial advice - always do your own research
 
 ## 📄 License
 
