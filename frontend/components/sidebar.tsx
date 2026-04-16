@@ -6,8 +6,8 @@ import { BarChart3, TrendingUp, Calculator, RotateCw, Settings, Home, Activity, 
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: Home, gradient: 'from-accent-purple to-accent-pink' },
-  { href: '/predictions', label: 'Predictions', icon: TrendingUp, gradient: 'from-accent-blue to-accent-cyan' },
-  { href: '/risk', label: 'Risk Simulator', icon: Calculator, gradient: 'from-accent-indigo to-accent-purple' },
+  { href: '/predictions', label: 'AI Signals', icon: TrendingUp, gradient: 'from-accent-blue to-accent-cyan' },
+  { href: '/risk', label: 'Risk Analysis', icon: Calculator, gradient: 'from-accent-indigo to-accent-purple' },
   { href: '/backtest', label: 'Backtest', icon: RotateCw, gradient: 'from-accent-cyan to-accent-teal' },
   { href: '/settings', label: 'Settings', icon: Settings, gradient: 'from-accent-amber to-accent-orange' },
 ]
@@ -25,7 +25,7 @@ export function Sidebar() {
           </div>
           <div>
             <h1 className="text-xl font-bold gradient-text">PREDICTRADE</h1>
-            <p className="text-xs text-text-secondary">AI Crypto Analysis</p>
+            <p className="text-xs text-text-secondary">AI Spot Trading</p>
           </div>
         </div>
         <div className="flex items-center gap-2 mt-3 text-xs text-accent-emerald">
@@ -74,7 +74,7 @@ export function Sidebar() {
           <span className="text-xs font-medium text-text-primary">Performance</span>
         </div>
         <div className="text-2xl font-bold gradient-text-blue">+24.5%</div>
-        <p className="text-xs text-text-secondary mt-1">Last 30 days</p>
+        <p className="text-xs text-text-secondary mt-1">Spot Portfolio ROI</p>
       </div>
 
       {/* Footer */}

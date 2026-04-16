@@ -1,6 +1,6 @@
-# PREDICTRADE - AI-Powered Crypto & Prediction Market Trading Bot
+# PREDICTRADE - AI-Powered Spot Crypto Trading & Prediction Market Platform
 
-A professional, full-stack AI-powered cryptocurrency trading platform with integrated prediction market support (Polymarket), multi-agent AI system (CrewAI), and comprehensive risk management.
+A professional, full-stack AI-powered cryptocurrency spot trading platform with integrated prediction market support (Polymarket), multi-agent AI system (CrewAI), and comprehensive risk management. Optimized for spot trading with real-time market analysis and AI-driven trading signals.
 
 ## 🏗️ Architecture Overview
 
@@ -52,24 +52,28 @@ A professional, full-stack AI-powered cryptocurrency trading platform with integ
 - **Strategy Agent**: Generates trading signals using LLM and technical analysis
 - **Risk Management Agent**: Validates signals and enforces risk rules
 
-### 📊 Trading & Execution
-- **CEX Integration**: Binance, Bybit via CCXT library
-- **Polymarket Integration**: Prediction market trading
-- **Order Management**: Unified order execution with validation
+### 📊 Spot Trading & Execution
+- **CEX Integration**: Binance, Bybit via CCXT library (Spot Markets)
+- **Polymarket Integration**: Prediction market trading for event-based opportunities
+- **Order Management**: Unified spot order execution with real-time validation
+- **Portfolio Tracking**: Comprehensive spot holdings and performance monitoring
 
-### 🛡️ Risk Management
-- **Daily Loss Limits**: Automatic kill switch at configurable thresholds
-- **Position Sizing**: Kelly Criterion and volatility-based sizing
-- **VaR/CVaR**: Value at Risk calculations for portfolio monitoring
+### 🛡️ Risk Management (Spot Trading Optimized)
+- **Daily Loss Limits**: Automatic protection at configurable thresholds
+- **Position Sizing**: Kelly Criterion and volatility-based sizing for spot positions
+- **VaR/CVaR**: Value at Risk calculations for spot portfolio monitoring
 - **Circuit Breakers**: System-level protection against failures
-- **Dynamic Stop-Loss**: ATR-based stop-loss placement
+- **Dynamic Stop-Loss**: ATR-based stop-loss placement for spot trades
+- **Portfolio Rebalancing**: AI-driven spot portfolio optimization
 
-### 📈 Frontend Dashboard
-- Real-time market data via WebSocket
-- Bot control panel (start/stop/configure)
-- Position and order management
-- Risk metrics visualization
-- Trading signals display
+### 📈 Frontend Dashboard (Spot Trading Focused)
+- Real-time spot market data via WebSocket
+- AI-powered spot trading signals and recommendations
+- Spot position and order management
+- Portfolio performance tracking and analytics
+- Risk metrics visualization for spot trading
+- Prediction market integration display
+- Live price alerts and notifications
 
 ## 🛠️ Tech Stack
 

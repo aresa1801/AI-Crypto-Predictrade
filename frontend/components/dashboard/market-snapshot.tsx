@@ -80,7 +80,7 @@ function MarketSnapshotContent() {
           <BarChart3 className="w-5 h-5 text-white" />
         </div>
         <div>
-          <h3 className="text-lg font-semibold gradient-text-blue">Market Snapshot</h3>
+          <h3 className="text-lg font-semibold gradient-text-blue">Spot Market Overview</h3>
           <p className="text-xs text-text-secondary">Live from CoinGecko</p>
         </div>
       </div>
@@ -110,7 +110,7 @@ function MarketSnapshotContent() {
       <div className="pt-4 border-t border-border-color/50 space-y-2">
         <h4 className="text-sm font-semibold text-text-primary flex items-center gap-2">
           <TrendingUp className="w-4 h-4 text-accent-emerald" />
-          Top Performers
+          Top Spot Trading Opportunities
         </h4>
         <div className="space-y-2">
           {assets.map((asset, index) => (

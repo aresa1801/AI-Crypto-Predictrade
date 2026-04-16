@@ -6,10 +6,10 @@ import { MobileNav } from './mobile-nav'
 import { ThemeToggle } from './theme-toggle'
 
 const breadcrumbs: Record<string, string> = {
-  '/dashboard': 'Dashboard',
-  '/predictions': 'Predictions',
-  '/risk': 'Risk Simulator',
-  '/backtest': 'Backtest',
+  '/dashboard': 'Spot Trading Dashboard',
+  '/predictions': 'AI Trading Signals',
+  '/risk': 'Risk Analysis',
+  '/backtest': 'Strategy Backtest',
   '/settings': 'Settings',
 }
 
@@ -23,7 +23,7 @@ export function Topbar() {
         <MobileNav />
         <div>
           <h2 className="text-lg lg:text-xl font-bold text-text-primary">{title}</h2>
-          <p className="text-xs text-text-secondary">Real-time AI Analytics</p>
+          <p className="text-xs text-text-secondary">AI-Powered Spot Trading</p>
         </div>
       </div>
       
@@ -50,7 +50,7 @@ export function Topbar() {
         
         {/* User Profile */}
         <button className="flex items-center gap-3 p-2 pl-3 rounded-lg bg-surface-secondary/50 border border-border-color/50 hover:border-accent-cyan/50 transition-all duration-300">
-          <span className="hidden lg:block text-sm font-medium text-text-primary">Trading Bot</span>
+          <span className="hidden lg:block text-sm font-medium text-text-primary">Spot Trading Bot</span>
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-accent-cyan to-accent-blue flex items-center justify-center shadow-lg">
             <User className="w-4 h-4 text-white" />
           </div>

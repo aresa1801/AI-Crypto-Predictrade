@@ -33,10 +33,10 @@ export function PredictionCard({ prediction }: PredictionCardProps) {
 
   // Determine action based on direction and confidence
   const getAction = () => {
-    if (direction === 'bearish' && confidence > 70) return { label: 'STRONG SELL', color: 'bg-accent-red' }
-    if (direction === 'bearish') return { label: 'SELL', color: 'bg-accent-red' }
-    if (direction === 'bullish' && confidence > 70) return { label: 'STRONG BUY', color: 'bg-accent-emerald' }
-    if (direction === 'bullish') return { label: 'BUY', color: 'bg-accent-emerald' }
+    if (direction === 'bearish' && confidence > 70) return { label: 'SPOT SELL', color: 'bg-accent-red' }
+    if (direction === 'bearish') return { label: 'REDUCE', color: 'bg-accent-red' }
+    if (direction === 'bullish' && confidence > 70) return { label: 'SPOT BUY', color: 'bg-accent-emerald' }
+    if (direction === 'bullish') return { label: 'ACCUMULATE', color: 'bg-accent-emerald' }
     return { label: 'HOLD', color: 'bg-accent-amber' }
   }
 
@@ -76,8 +76,8 @@ export function PredictionCard({ prediction }: PredictionCardProps) {
 
   // Determine border animation class based on signal
   const getBorderClass = () => {
-    if (action.label === 'STRONG BUY') return 'border-strong-buy'
-    if (action.label === 'BUY') return 'border-buy'
+    if (action.label === 'SPOT BUY') return 'border-strong-buy'
+    if (action.label === 'ACCUMULATE') return 'border-buy'
     return 'border-border-color/50 hover:border-accent-cyan/50'
   }
 
