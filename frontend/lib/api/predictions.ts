@@ -18,7 +18,7 @@ export async function fetchAIPredictions(): Promise<Prediction[]> {
     const cryptoAssets = await fetchCryptoMarketData()
     
     // Generate predictions based on real market data
-    const predictions: Prediction[] = cryptoAssets.slice(0, 6).map((asset, index) => {
+    const predictions: Prediction[] = cryptoAssets.map((asset, index) => {
       // Simple momentum-based prediction logic
       // In production, replace with actual AI model predictions
       const direction = asset.change24h > 0 ? ('bullish' as const) : ('bearish' as const)
