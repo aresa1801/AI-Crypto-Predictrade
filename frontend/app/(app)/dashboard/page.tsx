@@ -4,6 +4,9 @@ import { useState, useEffect } from 'react'
 import { MarketSnapshot } from '@/components/dashboard/market-snapshot'
 import { PredictionGauges } from '@/components/dashboard/prediction-gauges'
 import { RecentPredictions } from '@/components/dashboard/recent-predictions'
+import { SpotPortfolio } from '@/components/dashboard/spot-portfolio'
+import { SpotOrderForm } from '@/components/dashboard/spot-order-form'
+import { PredictionMarkets } from '@/components/dashboard/prediction-markets'
 import { TrendingUp, Activity, Zap } from 'lucide-react'
 
 export default function DashboardPage() {
@@ -36,7 +39,7 @@ export default function DashboardPage() {
               <Activity className="w-4 h-4 text-accent-emerald" />
               <span className="text-xs text-text-secondary">Spot Holdings</span>
             </div>
-            <p className="text-2xl font-bold text-accent-emerald">12</p>
+            <p className="text-2xl font-bold text-accent-emerald">5</p>
           </div>
           <div className="p-4 rounded-xl bg-gradient-to-br from-accent-blue/20 to-accent-cyan/20 border border-accent-blue/30 backdrop-blur-sm">
             <div className="flex items-center gap-2 mb-1">
@@ -50,7 +53,7 @@ export default function DashboardPage() {
               <TrendingUp className="w-4 h-4 text-accent-purple" />
               <span className="text-xs text-text-secondary">Portfolio Value</span>
             </div>
-            <p className="text-2xl font-bold text-accent-purple">+$2,450</p>
+            <p className="text-2xl font-bold text-accent-purple">$50,406</p>
           </div>
           <div className="p-4 rounded-xl bg-gradient-to-br from-accent-indigo/20 to-accent-purple/20 border border-accent-indigo/30 backdrop-blur-sm">
             <div className="flex items-center gap-2 mb-1">
@@ -62,14 +65,29 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Top Row - Market Snapshot & Gauges */}
+      {/* Top Row - Market Snapshot & Order Form */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
         <div className="lg:col-span-1">
           <MarketSnapshot loading={loading} />
         </div>
         <div className="lg:col-span-2">
-          <PredictionGauges loading={loading} />
+          <SpotOrderForm />
         </div>
+      </div>
+
+      {/* Middle Row - Spot Portfolio */}
+      <div>
+        <SpotPortfolio />
+      </div>
+
+      {/* AI Prediction Gauges */}
+      <div>
+        <PredictionGauges loading={loading} />
+      </div>
+
+      {/* Prediction Markets */}
+      <div>
+        <PredictionMarkets />
       </div>
 
       {/* Bottom Row - Recent Predictions */}
