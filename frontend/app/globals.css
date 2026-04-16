@@ -305,3 +305,75 @@ body {
   background-size: 200% auto;
   animation: shine 3s linear infinite;
 }
+
+/* Animated border for signal cards */
+@keyframes border-pulse-green {
+  0%, 100% {
+    border-color: rgb(16 185 129 / 0.3);
+    box-shadow: 0 0 15px rgb(16 185 129 / 0.3), 0 0 30px rgb(16 185 129 / 0.15);
+  }
+  50% {
+    border-color: rgb(16 185 129 / 0.8);
+    box-shadow: 0 0 25px rgb(16 185 129 / 0.6), 0 0 50px rgb(16 185 129 / 0.3);
+  }
+}
+
+@keyframes border-pulse-blue {
+  0%, 100% {
+    border-color: rgb(59 130 246 / 0.3);
+    box-shadow: 0 0 15px rgb(59 130 246 / 0.3), 0 0 30px rgb(59 130 246 / 0.15);
+  }
+  50% {
+    border-color: rgb(59 130 246 / 0.8);
+    box-shadow: 0 0 25px rgb(59 130 246 / 0.6), 0 0 50px rgb(59 130 246 / 0.3);
+  }
+}
+
+.border-strong-buy {
+  animation: border-pulse-green 2s ease-in-out infinite;
+  border-width: 2px;
+}
+
+.border-buy {
+  animation: border-pulse-blue 2s ease-in-out infinite;
+  border-width: 2px;
+}
+
+/* Price change animation */
+@keyframes price-up {
+  0% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  50% {
+    transform: translateY(-3px);
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes price-down {
+  0% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  50% {
+    transform: translateY(3px);
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.price-change-up {
+  animation: price-up 0.5s ease-out;
+}
+
+.price-change-down {
+  animation: price-down 0.5s ease-out;
+}

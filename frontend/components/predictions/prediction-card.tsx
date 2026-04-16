@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Prediction } from '@/lib/types'
 import { TrendingUp, TrendingDown } from 'lucide-react'
 
@@ -12,8 +12,42 @@ export function PredictionCard({ prediction }: PredictionCardProps) {
   const [selectedTimeframe, setSelectedTimeframe] = useState<'1h' | '4h' | '24h'>(
     prediction.timeframe === '1d' ? '24h' : prediction.timeframe === '1h' ? '1h' : '4h'
   )
+  
+  // Real-time price state
+  const [currentPrice, setCurrentPrice] = useState(prediction.currentPrice)
+  const [priceChange24h, setPriceChange24h] = useState(prediction.asset.change24h)
+  const [priceAnimation, setPriceAnimation] = useState<'up' | 'down' | null>(null)
+  const prevPriceRef = useRef(prediction.currentPrice)
 
-  const { asset, confidence, confidenceLevel, direction, currentPrice, targetPrice, modelVersion } = prediction
+  const { asset, confidence, confidenceLevel, direction, targetPrice, modelVersion } = prediction
+
+  // Simulate real-time price updates
+  useEffect(() => {
+    const interval = setInterval(() => {
+      // Simulate price movement (±0.5% random fluctuation)
+      const fluctuation = (Math.random() - 0.5) * 0.01
+      const newPrice = currentPrice * (1 + fluctuation)
+      
+      // Trigger animation based on price change
+      if (newPrice > prevPriceRef.current) {
+        setPriceAnimation('up')
+      } else if (newPrice < prevPriceRef.current) {
+        setPriceAnimation('down')
+      }
+      
+      setCurrentPrice(newPrice)
+      prevPriceRef.current = newPrice
+      
+      // Update 24h change slightly
+      const changeFluctuation = (Math.random() - 0.5) * 0.2
+      setPriceChange24h(prev => prev + changeFluctuation)
+      
+      // Clear animation after it completes
+      setTimeout(() => setPriceAnimation(null), 500)
+    }, 15000) // Update every 15 seconds
+    
+    return () => clearInterval(interval)
+  }, [currentPrice])
 
   // Calculate signal score based on confidence and direction
   const signalScore = direction === 'bullish' 
@@ -66,8 +100,15 @@ export function PredictionCard({ prediction }: PredictionCardProps) {
   const ciLower = (30 + Math.random() * 10).toFixed(1)
   const ciUpper = (40 + Math.random() * 15).toFixed(1)
 
+  // Determine border animation class based on signal
+  const getBorderClass = () => {
+    if (action.label === 'STRONG BUY') return 'border-strong-buy'
+    if (action.label === 'BUY') return 'border-buy'
+    return 'border-border-color/50 hover:border-accent-cyan/50'
+  }
+
   return (
-    <div className="card-gradient border-border-color/50 hover:border-accent-cyan/50 transition-all duration-200">
+    <div className={`card-gradient transition-all duration-200 ${getBorderClass()}`}>
       {/* Header with Asset Name and Timeframes */}
       <div className="flex items-center justify-between mb-3 pb-2 border-b border-border-color/30">
         <div>
@@ -96,14 +137,14 @@ export function PredictionCard({ prediction }: PredictionCardProps) {
       {/* Price and Action */}
       <div className="flex items-start justify-between mb-3">
         <div>
-          <div className="text-2xl font-bold text-text-primary">
+          <div className={`text-2xl font-bold text-text-primary ${priceAnimation ? `price-change-${priceAnimation}` : ''}`}>
             ${currentPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: currentPrice < 1 ? 6 : 2 })}
           </div>
           <div className={`flex items-center gap-1 mt-0.5 text-xs font-medium ${
-            asset.change24h >= 0 ? 'text-accent-emerald' : 'text-accent-red'
+            priceChange24h >= 0 ? 'text-accent-emerald' : 'text-accent-red'
           }`}>
-            {asset.change24h >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-            {asset.change24h >= 0 ? '+' : ''}{asset.change24h.toFixed(2)}% 24h
+            {priceChange24h >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+            {priceChange24h >= 0 ? '+' : ''}{priceChange24h.toFixed(2)}% 24h
           </div>
         </div>
         <button className={`${action.color} text-white px-3 py-1.5 rounded-md text-xs font-bold hover:opacity-90 transition-opacity`}>
