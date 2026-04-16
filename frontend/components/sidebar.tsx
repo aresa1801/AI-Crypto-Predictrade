@@ -22,8 +22,8 @@ export function Sidebar() {
       isCollapsed ? 'w-20' : 'w-72'
     }`}>
       {/* Header with gradient */}
-      <div className="p-6 border-b border-border-color/50 bg-gradient-to-br from-accent-purple/10 to-accent-pink/10">
-        <div className={`flex items-center gap-3 mb-2 ${isCollapsed ? 'justify-center' : ''}`}>
+      <div className="px-6 py-4 border-b border-border-color/50 bg-gradient-to-br from-accent-purple/10 to-accent-pink/10">
+        <div className={`flex items-center gap-3 ${isCollapsed ? 'justify-center' : ''}`}>
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent-purple to-accent-pink flex items-center justify-center shadow-lg shadow-accent-purple/30 flex-shrink-0">
             <Sparkles className="w-5 h-5 text-white" />
           </div>
@@ -35,7 +35,7 @@ export function Sidebar() {
           )}
         </div>
         {!isCollapsed && (
-          <div className="flex items-center gap-2 mt-3 text-xs text-accent-emerald">
+          <div className="flex items-center gap-2 mt-2 text-xs text-accent-emerald">
             <Activity className="w-3 h-3 animate-pulse" />
             <span>System Active</span>
           </div>
