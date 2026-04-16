@@ -36,19 +36,19 @@ export default function PredictionsPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="card">
           <h3 className="text-sm font-medium text-text-secondary mb-4">Confidence Level</h3>
-          <p className="text-3xl font-bold text-accent-blue">{selectedAsset.confidenceLevel}%</p>
+          <p className="text-3xl font-bold text-accent-blue">{selectedAsset.confidenceLevel ?? selectedAsset.confidence}%</p>
           <p className="text-xs text-text-secondary mt-2">High confidence prediction</p>
         </div>
         <div className="card">
           <h3 className="text-sm font-medium text-text-secondary mb-4">Expected Value</h3>
-          <p className={`text-3xl font-bold ${selectedAsset.expectedValue >= 0 ? 'text-accent-emerald' : 'text-accent-red'}`}>
-            ${selectedAsset.expectedValue.toFixed(2)}
+          <p className={`text-3xl font-bold ${(selectedAsset.expectedValue ?? 0) >= 0 ? 'text-accent-emerald' : 'text-accent-red'}`}>
+            ${(selectedAsset.expectedValue ?? 0).toFixed(2)}
           </p>
           <p className="text-xs text-text-secondary mt-2">Per trade</p>
         </div>
         <div className="card">
           <h3 className="text-sm font-medium text-text-secondary mb-4">Risk/Reward Ratio</h3>
-          <p className="text-3xl font-bold text-accent-emerald">{selectedAsset.riskReward.toFixed(2)}:1</p>
+          <p className="text-3xl font-bold text-accent-emerald">{(selectedAsset.riskReward ?? 0).toFixed(2)}:1</p>
           <p className="text-xs text-text-secondary mt-2">Favorable ratio</p>
         </div>
       </div>
