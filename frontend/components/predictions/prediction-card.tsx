@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState } from 'react'
 import { Prediction } from '@/lib/types'
 import { TrendingUp, TrendingDown } from 'lucide-react'
+import { useLivePrice } from '@/hooks/use-live-price'
 
 interface PredictionCardProps {
   prediction: Prediction
@@ -12,42 +13,15 @@ export function PredictionCard({ prediction }: PredictionCardProps) {
   const [selectedTimeframe, setSelectedTimeframe] = useState<'1h' | '4h' | '24h'>(
     prediction.timeframe === '1d' ? '24h' : prediction.timeframe === '1h' ? '1h' : '4h'
   )
-  
-  // Real-time price state
-  const [currentPrice, setCurrentPrice] = useState(prediction.currentPrice)
-  const [priceChange24h, setPriceChange24h] = useState(prediction.asset.change24h)
-  const [priceAnimation, setPriceAnimation] = useState<'up' | 'down' | null>(null)
-  const prevPriceRef = useRef(prediction.currentPrice)
 
   const { asset, confidence, confidenceLevel, direction, targetPrice, modelVersion } = prediction
-
-  // Simulate real-time price updates
-  useEffect(() => {
-    const interval = setInterval(() => {
-      // Simulate price movement (±0.5% random fluctuation)
-      const fluctuation = (Math.random() - 0.5) * 0.01
-      const newPrice = currentPrice * (1 + fluctuation)
-      
-      // Trigger animation based on price change
-      if (newPrice > prevPriceRef.current) {
-        setPriceAnimation('up')
-      } else if (newPrice < prevPriceRef.current) {
-        setPriceAnimation('down')
-      }
-      
-      setCurrentPrice(newPrice)
-      prevPriceRef.current = newPrice
-      
-      // Update 24h change slightly
-      const changeFluctuation = (Math.random() - 0.5) * 0.2
-      setPriceChange24h(prev => prev + changeFluctuation)
-      
-      // Clear animation after it completes
-      setTimeout(() => setPriceAnimation(null), 500)
-    }, 15000) // Update every 15 seconds
-    
-    return () => clearInterval(interval)
-  }, [currentPrice])
+  
+  // Use live price hook for real-time updates
+  const { price: currentPrice, change24h: priceChange24h, priceDirection } = useLivePrice(
+    asset.id,
+    prediction.currentPrice,
+    asset.change24h
+  )
 
   // Calculate signal score based on confidence and direction
   const signalScore = direction === 'bullish' 
@@ -137,7 +111,7 @@ export function PredictionCard({ prediction }: PredictionCardProps) {
       {/* Price and Action */}
       <div className="flex items-start justify-between mb-3">
         <div>
-          <div className={`text-2xl font-bold text-text-primary ${priceAnimation ? `price-change-${priceAnimation}` : ''}`}>
+          <div className={`text-2xl font-bold text-text-primary ${priceDirection ? `price-change-${priceDirection}` : ''}`}>
             ${currentPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: currentPrice < 1 ? 6 : 2 })}
           </div>
           <div className={`flex items-center gap-1 mt-0.5 text-xs font-medium ${
