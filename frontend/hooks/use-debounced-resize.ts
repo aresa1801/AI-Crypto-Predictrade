@@ -30,9 +30,6 @@ export function useDebouncedResize(delay: number = 150): WindowSize {
       timeoutId = setTimeout(handleResize, delay)
     }
 
-    // Set initial size
-    handleResize()
-
     window.addEventListener('resize', debouncedResize)
     
     return () => {

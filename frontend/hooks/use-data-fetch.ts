@@ -27,6 +27,22 @@ const cache = new Map<string, CacheEntry<any>>()
 /**
  * Custom hook for optimized data fetching with caching
  * Reduces unnecessary API calls and improves performance
+ * 
+ * @example
+ * ```typescript
+ * // Memoize your fetch function and callbacks to prevent unnecessary re-renders
+ * const fetchData = useCallback(() => fetchAIPredictions(), [])
+ * const handleSuccess = useCallback((data) => console.log('Success'), [])
+ * 
+ * const { data, loading, error, refetch } = useDataFetch(fetchData, {
+ *   cacheKey: 'predictions',
+ *   cacheDuration: 60000,
+ *   onSuccess: handleSuccess,
+ * })
+ * ```
+ * 
+ * Note: For best performance, wrap fetchFn, onSuccess, and onError in useCallback
+ * to prevent the hook from recreating the fetchData function on every render.
  */
 export function useDataFetch<T>(
   fetchFn: () => Promise<T>,
