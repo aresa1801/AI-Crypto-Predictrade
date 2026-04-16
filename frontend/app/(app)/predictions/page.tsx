@@ -58,9 +58,9 @@ export default function PredictionsPage() {
 
       {/* Loading State */}
       {loading && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {[...Array(8)].map((_, i) => (
-            <div key={i} className="card-gradient animate-pulse h-96" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3">
+          {[...Array(100)].map((_, i) => (
+            <div key={i} className="card-gradient animate-pulse h-80" />
           ))}
         </div>
       )}
@@ -75,11 +75,16 @@ export default function PredictionsPage() {
 
       {/* Predictions Grid */}
       {!loading && !error && predictions.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {predictions.map((prediction) => (
-            <PredictionCard key={prediction.id} prediction={prediction} />
-          ))}
-        </div>
+        <>
+          <div className="text-sm text-text-secondary mb-2">
+            Showing {predictions.length} cryptocurrencies (Top 100 by market cap, excluding stablecoins)
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3">
+            {predictions.map((prediction) => (
+              <PredictionCard key={prediction.id} prediction={prediction} />
+            ))}
+          </div>
+        </>
       )}
 
       {/* Empty State */}

@@ -8,8 +8,19 @@ import { CryptoAsset, MarketSnapshot } from '../types'
 
 const COINGECKO_API_BASE = 'https://api.coingecko.com/api/v3'
 
-// Popular cryptocurrencies to track
-const CRYPTO_IDS = ['bitcoin', 'ethereum', 'solana', 'cardano', 'ripple', 'polkadot', 'avalanche-2', 'chainlink']
+// Stablecoins to exclude from predictions
+const STABLECOIN_IDS = [
+  'tether', 'usd-coin', 'binance-usd', 'dai', 'frax', 'true-usd', 'paxos-standard',
+  'gemini-dollar', 'liquity-usd', 'stasis-eurs', 'neutrino', 'fei-usd', 'terrausd',
+  'magic-internet-money', 'frax-share', 'alchemix-usd', 'usdx', 'reserve', 
+  'usdd', 'first-digital-usd', 'paypal-usd', 'ethena-usde'
+]
+
+const STABLECOIN_SYMBOLS = [
+  'USDT', 'USDC', 'BUSD', 'DAI', 'FRAX', 'TUSD', 'USDP', 'GUSD', 'LUSD', 
+  'EURT', 'USDN', 'FEI', 'UST', 'MIM', 'FXS', 'ALUSD', 'USDX', 'RSV',
+  'USDD', 'FDUSD', 'PYUSD', 'USDE'
+]
 
 export interface CoinGeckoMarketData {
   id: string
@@ -41,13 +52,14 @@ export interface CoinGeckoGlobalData {
  */
 export async function fetchCryptoMarketData(): Promise<CryptoAsset[]> {
   try {
+    // Fetch more than 100 to account for stablecoins we'll filter out
+    // We'll fetch 150 and filter down to get ~100 non-stablecoins
     const response = await fetch(
       `${COINGECKO_API_BASE}/coins/markets?` +
       new URLSearchParams({
         vs_currency: 'usd',
-        ids: CRYPTO_IDS.join(','),
         order: 'market_cap_desc',
-        per_page: '10',
+        per_page: '150',
         page: '1',
         sparkline: 'false',
         price_change_percentage: '24h',
@@ -60,7 +72,21 @@ export async function fetchCryptoMarketData(): Promise<CryptoAsset[]> {
 
     const data: CoinGeckoMarketData[] = await response.json()
 
-    return data.map((coin) => ({
+    // Filter out stablecoins and map to CryptoAsset
+    const filteredData = data
+      .filter(coin => {
+        // Exclude if coin ID is in stablecoin list
+        if (STABLECOIN_IDS.includes(coin.id)) return false
+        // Exclude if symbol is in stablecoin list
+        if (STABLECOIN_SYMBOLS.includes(coin.symbol.toUpperCase())) return false
+        // Additional check for common stablecoin patterns in name
+        const lowerName = coin.name.toLowerCase()
+        if (lowerName.includes('usd') && (lowerName.includes('stable') || lowerName.includes('dollar'))) return false
+        return true
+      })
+      .slice(0, 100) // Take top 100 after filtering
+
+    return filteredData.map((coin) => ({
       id: coin.id,
       symbol: coin.symbol.toUpperCase(),
       name: coin.name,
