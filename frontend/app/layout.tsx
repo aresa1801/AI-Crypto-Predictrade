@@ -4,8 +4,18 @@ import { ThemeProvider } from 'next-themes'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 
-const geist = Geist({ subsets: ["latin"], variable: '--font-geist-sans' })
-const geistMono = Geist_Mono({ subsets: ["latin"], variable: '--font-geist-mono' })
+const geist = Geist({ 
+  subsets: ["latin"], 
+  variable: '--font-geist-sans',
+  display: 'swap',
+  fallback: ['system-ui', 'arial']
+})
+const geistMono = Geist_Mono({ 
+  subsets: ["latin"], 
+  variable: '--font-geist-mono',
+  display: 'swap',
+  fallback: ['ui-monospace', 'monospace']
+})
 
 export const metadata: Metadata = {
   title: 'PREDICTRADE - AI Crypto Analysis Platform',
