@@ -443,13 +443,17 @@ class CEXConnector(BaseCEXConnector):
             raise
     
     async def get_positions(self, symbol: Optional[str] = None) -> list[dict]:
-        """Get open positions (for futures/margin)"""
+        """Get open positions (spot trading only - returns empty list as spot doesn't have leveraged positions)"""
         if not self._connected or not self.exchange:
             raise ConnectionError("Not connected to exchange")
         
         try:
+            # Spot trading doesn't have positions like futures/margin
+            # This method returns empty list for spot markets
+            # Only CEX spot balances are tracked via get_balance()
             if hasattr(self.exchange, 'fetch_positions'):
                 positions = await self.exchange.fetch_positions([symbol] if symbol else None)
+                # Filter to only actual positions (futures/margin would appear here, but we use spot only)
                 return [p for p in positions if float(p.get("contracts", 0)) != 0]
             return []
             

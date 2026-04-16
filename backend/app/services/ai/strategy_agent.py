@@ -39,9 +39,9 @@ class SignalStrength(str, Enum):
 
 
 class MarketType(str, Enum):
-    """Market type for signal"""
+    """Market type for signal - Platform supports spot trading only"""
     CEX_SPOT = "cex_spot"
-    CEX_FUTURES = "cex_futures"
+    # CEX_FUTURES = "cex_futures"  # Not supported - spot trading only
     POLYMARKET = "polymarket"
 
 
