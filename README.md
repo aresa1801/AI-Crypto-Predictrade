@@ -1,216 +1,227 @@
-# PREDICTRADE - AI Crypto Analysis Platform
+# PREDICTRADE - AI-Powered Crypto & Prediction Market Trading Bot
 
-A professional, full-stack AI-powered cryptocurrency trading analysis platform built with Next.js, TypeScript, and Recharts.
+A professional, full-stack AI-powered cryptocurrency trading platform with integrated prediction market support (Polymarket), multi-agent AI system (CrewAI), and comprehensive risk management.
 
-## Features
-
-### 📊 Dashboard
-- Real-time market snapshot with top assets
-- Confidence gauge visualization for top predictions
-- Complete prediction table with status tracking
-- At-a-glance market metrics and analysis
-
-### 🎯 Predictions
-- Detailed price charts with technical indicators
-- Confidence levels and directional predictions
-- Risk/reward ratio analysis
-- Multiple timeframe analysis (1h, 4h, 1d, 1w)
-
-### ⚠️ Risk Simulator
-- Interactive Monte Carlo simulation
-- Position sizing calculator
-- Drawdown analysis with equity projections
-- Risk tolerance configuration
-- Expected value calculations
-
-### 📈 Backtest
-- Historical strategy performance analysis
-- Equity curve visualization
-- Comprehensive trade logs
-- Sharpe ratio, profit factor, and other metrics
-- Recovery factor and winning streak analysis
-
-### ⚙️ Settings
-- AI model preference selection (Fast, Balanced, Accurate)
-- Risk tolerance configuration (Conservative, Moderate, Aggressive)
-- API key management
-- Notification preferences
-
-## Tech Stack
-
-- **Framework**: Next.js 16 (App Router)
-- **Language**: TypeScript
-- **Styling**: Tailwind CSS
-- **Charts**: Recharts
-- **Icons**: Lucide React
-- **Package Manager**: pnpm
-
-## Project Structure
+## 🏗️ Architecture Overview
 
 ```
-/vercel/share/v0-project
-├── app/
-│   ├── layout.tsx                 # Root layout
-│   ├── page.tsx                   # Home (redirects to dashboard)
-│   └── (app)/
-│       ├── layout.tsx             # App wrapper layout
-│       ├── dashboard/
-│       │   └── page.tsx
-│       ├── predictions/
-│       │   └── page.tsx
-│       ├── risk/
-│       │   └── page.tsx
-│       ├── backtest/
-│       │   └── page.tsx
-│       └── settings/
-│           └── page.tsx
-├── components/
-│   ├── sidebar.tsx               # Navigation sidebar
-│   ├── topbar.tsx                # Top navigation bar
-│   ├── mobile-nav.tsx            # Mobile menu
-│   ├── dashboard/
-│   │   ├── market-snapshot.tsx
-│   │   ├── prediction-gauges.tsx
-│   │   └── recent-predictions.tsx
-│   ├── predictions/
-│   │   ├── prediction-chart.tsx
-│   │   └── prediction-filters.tsx
-│   ├── risk/
-│   │   ├── risk-simulator-form.tsx
-│   │   └── risk-results.tsx
-│   ├── backtest/
-│   │   ├── backtest-chart.tsx
-│   │   ├── backtest-metrics.tsx
-│   │   └── trade-log.tsx
-│   └── settings/
-│       └── settings-form.tsx
-├── lib/
-│   ├── types.ts                  # TypeScript interfaces
-│   ├── mock-data.ts              # Sample data
-│   └── utils.ts                  # Utility functions
-├── app/
-│   └── globals.css               # Global styles
-├── tailwind.config.ts            # Tailwind configuration
-└── package.json
+┌─────────────────────────────────────────────────────────────────┐
+│                    Frontend (Vercel/Next.js)                     │
+│  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌────────────┐ │
+│  │  Dashboard  │ │ Predictions │ │    Risk     │ │  Backtest  │ │
+│  └─────────────┘ └─────────────┘ └─────────────┘ └────────────┘ │
+│                         │ WebSocket/REST API                     │
+└─────────────────────────┼───────────────────────────────────────┘
+                          │
+┌─────────────────────────┼───────────────────────────────────────┐
+│                   Backend (Railway/FastAPI)                      │
+│  ┌──────────────────────┴──────────────────────┐                │
+│  │              API Gateway (FastAPI)           │                │
+│  └──────────────────────┬──────────────────────┘                │
+│                         │                                        │
+│  ┌──────────────────────┼──────────────────────┐                │
+│  │         AI & Risk Management Core            │                │
+│  │  ┌─────────────┐ ┌─────────────┐ ┌────────┐ │                │
+│  │  │    Data     │ │  Strategy   │ │  Risk  │ │                │
+│  │  │ Aggregator  │ │   Agent     │ │ Agent  │ │                │
+│  │  └─────────────┘ └─────────────┘ └────────┘ │                │
+│  └──────────────────────┬──────────────────────┘                │
+│                         │                                        │
+│  ┌──────────────────────┼──────────────────────┐                │
+│  │            Execution Layer                   │                │
+│  │  ┌─────────────────┐ ┌─────────────────────┐│                │
+│  │  │  CEX Connector  │ │ Polymarket Connector││                │
+│  │  │  (CCXT/Binance) │ │    (@polybased/sdk) ││                │
+│  │  └─────────────────┘ └─────────────────────┘│                │
+│  └─────────────────────────────────────────────┘                │
+│                         │                                        │
+│  ┌──────────────────────┼──────────────────────┐                │
+│  │              Data Layer                      │                │
+│  │  ┌─────────────────┐ ┌─────────────────────┐│                │
+│  │  │   PostgreSQL    │ │       Redis         ││                │
+│  │  │  (History/Logs) │ │   (Cache/Queues)    ││                │
+│  │  └─────────────────┘ └─────────────────────┘│                │
+│  └─────────────────────────────────────────────┘                │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-## Color Scheme
+## ✨ Features
 
-- **Background**: `#0B0F19` (Dark Navy)
-- **Surface Primary**: `#111827` (Charcoal)
-- **Surface Secondary**: `#1A202C` (Dark Gray)
-- **Text Primary**: `#F5F7FA` (Off White)
-- **Text Secondary**: `#B0BAC9` (Light Gray)
-- **Primary Blue**: `#3B82F6`
-- **Success Green**: `#10B981`
-- **Warning Amber**: `#F59E0B`
-- **Error Red**: `#EF4444`
+### 🤖 AI Multi-Agent System (CrewAI)
+- **Data Aggregator Agent**: Collects market data, sentiment, and technical indicators
+- **Strategy Agent**: Generates trading signals using LLM and technical analysis
+- **Risk Management Agent**: Validates signals and enforces risk rules
 
-## Getting Started
+### 📊 Trading & Execution
+- **CEX Integration**: Binance, Bybit via CCXT library
+- **Polymarket Integration**: Prediction market trading
+- **Order Management**: Unified order execution with validation
 
-### Installation
+### 🛡️ Risk Management
+- **Daily Loss Limits**: Automatic kill switch at configurable thresholds
+- **Position Sizing**: Kelly Criterion and volatility-based sizing
+- **VaR/CVaR**: Value at Risk calculations for portfolio monitoring
+- **Circuit Breakers**: System-level protection against failures
+- **Dynamic Stop-Loss**: ATR-based stop-loss placement
+
+### 📈 Frontend Dashboard
+- Real-time market data via WebSocket
+- Bot control panel (start/stop/configure)
+- Position and order management
+- Risk metrics visualization
+- Trading signals display
+
+## 🛠️ Tech Stack
+
+| Layer | Technology |
+|-------|------------|
+| **Frontend** | Next.js 16, TypeScript, Tailwind CSS, Recharts |
+| **Backend** | FastAPI (Python 3.11+), AsyncIO |
+| **Database** | PostgreSQL, SQLAlchemy |
+| **Cache** | Redis |
+| **AI** | CrewAI, LangChain, OpenRouter/OpenAI |
+| **Trading** | CCXT, Polymarket SDK |
+| **Deployment** | Docker, Railway, Vercel |
+
+## 📁 Project Structure
+
+```
+AI-Crypto-Predictrade/
+├── frontend/                    # Next.js dashboard
+│   ├── app/                     # App router pages
+│   ├── components/              # React components
+│   ├── lib/                     # Utilities & API client
+│   └── package.json
+├── backend/                     # FastAPI backend
+│   ├── app/
+│   │   ├── api/routes/          # API endpoints
+│   │   ├── core/                # Config & security
+│   │   ├── models/              # Database models
+│   │   └── services/
+│   │       ├── ai/              # CrewAI agents
+│   │       ├── execution/       # CEX & Polymarket connectors
+│   │       └── risk/            # Risk management
+│   ├── requirements.txt
+│   └── Dockerfile
+├── docker-compose.yml           # Local development
+├── railway.toml                 # Railway deployment
+└── README.md
+```
+
+## 🚀 Getting Started
+
+### Prerequisites
+- Node.js 18+
+- Python 3.11+
+- PostgreSQL 15+
+- Redis 7+
+- pnpm (for frontend)
+
+### Quick Start with Docker
 
 ```bash
+# Clone repository
+git clone https://github.com/your-username/AI-Crypto-Predictrade.git
+cd AI-Crypto-Predictrade
+
+# Start all services
+docker-compose up -d
+
+# Frontend: http://localhost:3000
+# Backend: http://localhost:8000
+# API Docs: http://localhost:8000/docs
+```
+
+### Manual Setup
+
+#### Backend
+```bash
+cd backend
+
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate  # or `venv\Scripts\activate` on Windows
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Copy environment file
+cp .env.example .env
+# Edit .env with your API keys
+
+# Run migrations
+alembic upgrade head
+
+# Start server
+uvicorn app.main:app --reload
+```
+
+#### Frontend
+```bash
+cd frontend
+
 # Install dependencies
 pnpm install
+
+# Copy environment file
+cp .env.example .env.local
+# Edit with your backend URL
 
 # Start development server
 pnpm dev
 ```
 
-The app will be available at `http://localhost:3000`
+## 🔒 Security Configuration
 
-### Features Overview
+### API Key Management
+1. **Never hardcode API keys** - Use environment variables
+2. **IP Whitelisting** - Configure static IPs in Railway for exchange API access
+3. **Minimal Permissions** - Create API keys with only required scopes (no withdrawal)
+4. **Key Rotation** - Rotate keys every 3-6 months
 
-#### Dashboard
-- View all active predictions at a glance
-- Monitor market conditions and top movers
-- Confidence level indicators for each prediction
+### Environment Variables
 
-#### Predictions Page
-- Select different crypto assets
-- View detailed price analysis charts
-- Change analysis timeframe
-- Review risk/reward metrics
+| Variable | Description |
+|----------|-------------|
+| `EXCHANGE_BINANCE_API_KEY` | Binance API Key |
+| `EXCHANGE_BINANCE_API_SECRET` | Binance Secret |
+| `EXCHANGE_BINANCE_TESTNET` | Use testnet (true/false) |
+| `AI_OPENROUTER_API_KEY` | OpenRouter API Key for LLM |
+| `RISK_MAX_POSITION_SIZE_PCT` | Max position size (default: 2%) |
+| `RISK_DAILY_LOSS_LIMIT_PCT` | Daily loss limit (default: 5%) |
+| `RISK_MAX_DRAWDOWN_PCT` | Max drawdown (default: 15%) |
 
-#### Risk Simulator
-- Adjust initial capital and risk parameters
-- Run Monte Carlo simulations
-- View projected equity curves
-- Analyze win rate and profit factor impacts
+## 📚 API Documentation
 
-#### Backtest
-- Review historical strategy performance
-- View equity growth over time
-- Examine individual trade logs
-- Compare strategy metrics (Sharpe ratio, max drawdown, etc.)
+Once the backend is running, access:
+- **Swagger UI**: http://localhost:8000/docs
+- **ReDoc**: http://localhost:8000/redoc
 
-#### Settings
-- Configure API preferences
-- Set risk tolerance level
-- Enable/disable notifications
-- Select AI model preference
+### Key Endpoints
 
-## Design System
+| Endpoint | Description |
+|----------|-------------|
+| `GET /api/v1/bot/status` | Get bot status |
+| `POST /api/v1/bot/start` | Start trading bot |
+| `POST /api/v1/bot/stop` | Stop trading bot |
+| `GET /api/v1/market/price/{symbol}` | Get market price |
+| `GET /api/v1/risk/metrics` | Get risk metrics |
+| `POST /api/v1/risk/kill-switch` | Control kill switch |
+| `WS /api/v1/ws/market` | Real-time market data |
+| `WS /api/v1/ws/bot` | Bot status updates |
 
-### Responsive Design
-- **Mobile**: Optimized for screens < 768px
-- **Tablet**: Enhanced layout for 768px - 1024px
-- **Desktop**: Full features available for screens > 1024px
+## 🚢 Deployment
 
-### Components
-- Consistent card styling with borders
-- Accessible button states and focus indicators
-- Smooth transitions and hover effects
-- Proper contrast ratios (WCAG AA)
+### Railway (Backend)
+1. Connect your GitHub repository
+2. Configure environment variables
+3. Deploy using `railway.toml` configuration
 
-## Data Structure
+### Vercel (Frontend)
+1. Connect your GitHub repository
+2. Set `NEXT_PUBLIC_API_URL` environment variable
+3. Deploy automatically
 
-### Crypto Asset
-```typescript
-interface CryptoAsset {
-  id: string
-  symbol: string
-  name: string
-  price: number
-  change24h: number
-  volume24h: number
-  marketCap: number
-}
-```
+## 📄 License
 
-### Prediction
-```typescript
-interface Prediction {
-  id: string
-  asset: CryptoAsset
-  confidenceLevel: number
-  predictedDirection: 'up' | 'down'
-  predictedPrice: number
-  timeframe: '1h' | '4h' | '1d' | '1w'
-  expectedValue: number
-  riskReward: number
-  createdAt: Date
-  expiresAt: Date
-  status: 'active' | 'expired' | 'correct' | 'incorrect'
-}
-```
-
-## Future Enhancements
-
-- Real API integration for live crypto data
-- User authentication and accounts
-- Historical data persistence
-- Real-time WebSocket updates
-- Email and push notifications
-- Advanced backtesting with multiple strategies
-- Portfolio tracking
-- Trade execution capabilities
-
-## License
-
-MIT - Created with v0
-
-## Support
-
-For issues or questions, please refer to the documentation or contact support.
+MIT License - See LICENSE file for details.
