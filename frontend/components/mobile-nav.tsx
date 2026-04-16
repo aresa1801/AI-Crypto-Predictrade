@@ -7,8 +7,8 @@ import { Menu, X, TrendingUp, Calculator, RotateCw, Settings, Home, Sparkles } f
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: Home, gradient: 'from-accent-purple to-accent-pink' },
-  { href: '/predictions', label: 'Predictions', icon: TrendingUp, gradient: 'from-accent-blue to-accent-cyan' },
-  { href: '/risk', label: 'Risk Simulator', icon: Calculator, gradient: 'from-accent-indigo to-accent-purple' },
+  { href: '/predictions', label: 'AI Signals', icon: TrendingUp, gradient: 'from-accent-blue to-accent-cyan' },
+  { href: '/risk', label: 'Risk Analysis', icon: Calculator, gradient: 'from-accent-indigo to-accent-purple' },
   { href: '/backtest', label: 'Backtest', icon: RotateCw, gradient: 'from-accent-cyan to-accent-teal' },
   { href: '/settings', label: 'Settings', icon: Settings, gradient: 'from-accent-amber to-accent-orange' },
 ]

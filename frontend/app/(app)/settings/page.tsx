@@ -24,8 +24,8 @@ export default function SettingsPage() {
     <div className="p-8 space-y-6">
       {/* Header */}
       <div className="space-y-2">
-        <h1 className="text-3xl font-bold text-text-primary">Settings</h1>
-        <p className="text-text-secondary">Configure API, preferences, and notification settings</p>
+        <h1 className="text-3xl font-bold text-text-primary">Spot Trading Settings</h1>
+        <p className="text-text-secondary">Configure spot trading API, preferences, and notification settings</p>
       </div>
 
       {/* Success Message */}
@@ -45,8 +45,8 @@ export default function SettingsPage() {
         {/* Info Sidebar */}
         <div className="space-y-4">
           <div className="card">
-            <h3 className="text-sm font-semibold text-text-primary mb-3">API Integration</h3>
-            <p className="text-sm text-text-secondary mb-4">Connect your trading API for live predictions and automated alerts.</p>
+            <h3 className="text-sm font-semibold text-text-primary mb-3">Spot Trading API</h3>
+            <p className="text-sm text-text-secondary mb-4">Connect your exchange API for live spot trading and automated signals.</p>
             <button className="btn-primary w-full text-sm">
               Connect API
             </button>

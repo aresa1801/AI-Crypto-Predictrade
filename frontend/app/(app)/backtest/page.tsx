@@ -16,8 +16,8 @@ export default function BacktestPage() {
             <RotateCw className="w-6 h-6 text-white" />
           </div>
           <div>
-            <h1 className="text-2xl lg:text-3xl font-bold gradient-text-blue">Strategy Backtest</h1>
-            <p className="text-sm lg:text-base text-text-secondary">Historical performance analysis and trade-by-trade breakdown</p>
+            <h1 className="text-2xl lg:text-3xl font-bold gradient-text-blue">Spot Trading Strategy Backtest</h1>
+            <p className="text-sm lg:text-base text-text-secondary">Historical spot trading performance analysis and trade-by-trade breakdown</p>
           </div>
         </div>
       </div>
@@ -27,7 +27,7 @@ export default function BacktestPage() {
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-xl font-bold text-text-primary">{backtestData.strategyName}</h3>
-            <p className="text-sm text-text-secondary mt-1">Last 100 trading days | BTC/USDT</p>
+            <p className="text-sm text-text-secondary mt-1">Last 100 trading days | BTC/USDT Spot</p>
           </div>
           <div className="px-4 py-2 rounded-lg bg-gradient-to-r from-accent-emerald/20 to-accent-teal/20 border border-accent-emerald/30">
             <span className="text-accent-emerald font-bold text-lg">Active</span>

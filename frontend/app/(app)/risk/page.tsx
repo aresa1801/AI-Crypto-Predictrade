@@ -13,9 +13,9 @@ export default function RiskPage() {
             <Calculator className="w-6 h-6 text-white" />
           </div>
           <div>
-            <h1 className="text-2xl lg:text-3xl font-bold gradient-text">Risk & Scenario Simulator</h1>
+            <h1 className="text-2xl lg:text-3xl font-bold gradient-text">Spot Trading Risk Analysis</h1>
             <p className="text-sm lg:text-base text-text-secondary">
-              Interactive analysis of trading scenarios with real-time probability distributions and position sizing
+              AI-powered risk assessment and scenario simulation for spot trading positions
             </p>
           </div>
         </div>
@@ -25,7 +25,7 @@ export default function RiskPage() {
           <div className="flex items-center gap-3">
             <Shield className="w-5 h-5 text-accent-amber flex-shrink-0" />
             <p className="text-sm text-text-secondary">
-              <span className="font-semibold text-accent-amber">Risk Management:</span> Adjust parameters to simulate different market scenarios and optimize your position sizing
+              <span className="font-semibold text-accent-amber">Spot Trading Risk:</span> Adjust parameters to simulate different market scenarios and optimize your spot position sizing
             </p>
           </div>
         </div>
