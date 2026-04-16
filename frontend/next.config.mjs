@@ -22,8 +22,6 @@ const nextConfig = {
   },
   // Enable React strict mode for better performance warnings
   reactStrictMode: true,
-  // Enable SWC minification for faster builds
-  swcMinify: true,
   // Optimize production builds
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production',
