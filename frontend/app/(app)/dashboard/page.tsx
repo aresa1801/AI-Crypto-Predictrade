@@ -1,13 +1,16 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { MarketSnapshot } from '@/components/dashboard/market-snapshot'
-import { PredictionGauges } from '@/components/dashboard/prediction-gauges'
-import { RecentPredictions } from '@/components/dashboard/recent-predictions'
-import { SpotPortfolio } from '@/components/dashboard/spot-portfolio'
-import { SpotOrderForm } from '@/components/dashboard/spot-order-form'
-import { PredictionMarkets } from '@/components/dashboard/prediction-markets'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import { TrendingUp, Activity, Zap } from 'lucide-react'
+import { CardSkeleton } from '@/components/skeletons'
+
+// Lazy load heavy components
+const MarketSnapshot = lazy(() => import('@/components/dashboard/market-snapshot').then(m => ({ default: m.MarketSnapshot })))
+const PredictionGauges = lazy(() => import('@/components/dashboard/prediction-gauges').then(m => ({ default: m.PredictionGauges })))
+const RecentPredictions = lazy(() => import('@/components/dashboard/recent-predictions').then(m => ({ default: m.RecentPredictions })))
+const SpotPortfolio = lazy(() => import('@/components/dashboard/spot-portfolio').then(m => ({ default: m.SpotPortfolio })))
+const SpotOrderForm = lazy(() => import('@/components/dashboard/spot-order-form').then(m => ({ default: m.SpotOrderForm })))
+const PredictionMarkets = lazy(() => import('@/components/dashboard/prediction-markets').then(m => ({ default: m.PredictionMarkets })))
 
 export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
@@ -68,31 +71,43 @@ export default function DashboardPage() {
       {/* Top Row - Market Snapshot & Order Form */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
         <div className="lg:col-span-1">
-          <MarketSnapshot loading={loading} />
+          <Suspense fallback={<CardSkeleton />}>
+            <MarketSnapshot loading={loading} />
+          </Suspense>
         </div>
         <div className="lg:col-span-2">
-          <SpotOrderForm />
+          <Suspense fallback={<CardSkeleton />}>
+            <SpotOrderForm />
+          </Suspense>
         </div>
       </div>
 
       {/* Middle Row - Spot Portfolio */}
       <div>
-        <SpotPortfolio />
+        <Suspense fallback={<CardSkeleton />}>
+          <SpotPortfolio />
+        </Suspense>
       </div>
 
       {/* AI Prediction Gauges */}
       <div>
-        <PredictionGauges loading={loading} />
+        <Suspense fallback={<CardSkeleton />}>
+          <PredictionGauges loading={loading} />
+        </Suspense>
       </div>
 
       {/* Prediction Markets */}
       <div>
-        <PredictionMarkets />
+        <Suspense fallback={<CardSkeleton />}>
+          <PredictionMarkets />
+        </Suspense>
       </div>
 
       {/* Bottom Row - Recent Predictions */}
       <div>
-        <RecentPredictions loading={loading} />
+        <Suspense fallback={<CardSkeleton />}>
+          <RecentPredictions loading={loading} />
+        </Suspense>
       </div>
     </div>
   )
