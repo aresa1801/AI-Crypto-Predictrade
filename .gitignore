@@ -51,7 +51,9 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+# Python libs (but NOT frontend/lib which is needed)
+/lib/
+backend/lib/
 lib64/
 parts/
 sdist/
