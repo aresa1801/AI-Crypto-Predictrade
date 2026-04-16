@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Prediction } from '@/lib/types'
-import { predictions as mockPredictions } from '@/lib/mock/data'
+import { fetchAIPredictions } from '@/lib/api/predictions'
 import { TrendingUp, TrendingDown, Clock } from 'lucide-react'
 import { TableSkeleton } from '@/components/skeletons'
 import { ErrorBoundary } from '@/components/error-boundary'
@@ -41,8 +41,9 @@ function RecentPredictionsContent() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        await new Promise((resolve) => setTimeout(resolve, Math.random() * 600 + 600))
-        setState({ status: 'success', data: mockPredictions, error: null })
+        // Fetch real AI predictions from API
+        const predictions = await fetchAIPredictions()
+        setState({ status: 'success', data: predictions, error: null })
       } catch (error) {
         setState({
           status: 'error',
@@ -53,6 +54,11 @@ function RecentPredictionsContent() {
     }
 
     loadData()
+    
+    // Refresh predictions every 5 minutes
+    const interval = setInterval(loadData, 300000)
+    
+    return () => clearInterval(interval)
   }, [])
 
   if (state.status === 'loading') {

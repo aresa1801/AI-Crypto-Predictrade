@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { MarketSnapshot as MarketSnapshotType, CryptoAsset } from '@/lib/types'
-import { marketSnapshot as mockMarketSnapshot, cryptoAssets as mockCryptoAssets } from '@/lib/mock/data'
+import { fetchGlobalMarketData, fetchCryptoMarketData } from '@/lib/api/coingecko'
 import { TrendingUp, TrendingDown, BarChart3, Activity } from 'lucide-react'
 import { CardSkeleton } from '@/components/skeletons'
 import { ErrorBoundary } from '@/components/error-boundary'
@@ -21,13 +21,17 @@ function MarketSnapshotContent() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        // Simulate async fetch with delay
-        await new Promise((resolve) => setTimeout(resolve, Math.random() * 600 + 600))
+        // Fetch real data from CoinGecko API
+        const [marketData, assetsData] = await Promise.all([
+          fetchGlobalMarketData(),
+          fetchCryptoMarketData(),
+        ])
+
         setState({
           status: 'success',
           data: {
-            market: mockMarketSnapshot,
-            assets: mockCryptoAssets.slice(0, 3),
+            market: marketData,
+            assets: assetsData.slice(0, 3), // Top 3 assets
           },
           error: null,
         })
@@ -41,6 +45,11 @@ function MarketSnapshotContent() {
     }
 
     loadData()
+    
+    // Refresh data every 60 seconds
+    const interval = setInterval(loadData, 60000)
+    
+    return () => clearInterval(interval)
   }, [])
 
   if (state.status === 'loading') {
@@ -50,7 +59,10 @@ function MarketSnapshotContent() {
   if (state.status === 'error') {
     return (
       <div className="card-gradient flex items-center justify-center py-8">
-        <p className="text-accent-red">Failed to load market snapshot</p>
+        <div className="text-center">
+          <p className="text-accent-red mb-2">Failed to load market data</p>
+          <p className="text-xs text-text-secondary">Using CoinGecko API - Check your connection</p>
+        </div>
       </div>
     )
   }
@@ -67,7 +79,10 @@ function MarketSnapshotContent() {
         <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-accent-blue to-accent-cyan flex items-center justify-center shadow-lg shadow-accent-blue/30">
           <BarChart3 className="w-5 h-5 text-white" />
         </div>
-        <h3 className="text-lg font-semibold gradient-text-blue">Market Snapshot</h3>
+        <div>
+          <h3 className="text-lg font-semibold gradient-text-blue">Market Snapshot</h3>
+          <p className="text-xs text-text-secondary">Live from CoinGecko</p>
+        </div>
       </div>
 
       {/* Market Stats */}
@@ -111,7 +126,7 @@ function MarketSnapshotContent() {
                   </div>
                   <div>
                     <p className="text-sm font-semibold text-text-primary">{asset.symbol}</p>
-                    <p className="text-xs text-text-secondary">${asset.price.toFixed(2)}</p>
+                    <p className="text-xs text-text-secondary">${asset.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                   </div>
                 </div>
                 <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg ${
@@ -130,6 +145,11 @@ function MarketSnapshotContent() {
             </div>
           ))}
         </div>
+      </div>
+      
+      {/* Last Updated */}
+      <div className="text-xs text-text-secondary text-center pt-2 border-t border-border-color/30">
+        Last updated: {new Date().toLocaleTimeString()}
       </div>
     </div>
   )

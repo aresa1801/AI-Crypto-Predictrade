@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Prediction } from '@/lib/types'
-import { predictions as mockPredictions } from '@/lib/mock/data'
+import { fetchAIPredictions } from '@/lib/api/predictions'
 import { ArrowUp, ArrowDown, TrendingUp } from 'lucide-react'
 import { CardSkeleton } from '@/components/skeletons'
 import { ErrorBoundary } from '@/components/error-boundary'
@@ -114,10 +114,14 @@ function PredictionGaugesContent() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        await new Promise((resolve) => setTimeout(resolve, Math.random() * 600 + 600))
-        const topPredictions = mockPredictions
-          .sort((a, b) => b.confidenceLevel - a.confidenceLevel)
+        // Fetch real AI predictions from API
+        const predictions = await fetchAIPredictions()
+        
+        // Sort by confidence and get top 4
+        const topPredictions = predictions
+          .sort((a, b) => (b.confidenceLevel || b.confidence) - (a.confidenceLevel || a.confidence))
           .slice(0, 4)
+        
         setState({ status: 'success', data: topPredictions, error: null })
       } catch (error) {
         setState({
@@ -129,6 +133,11 @@ function PredictionGaugesContent() {
     }
 
     loadData()
+    
+    // Refresh predictions every 5 minutes
+    const interval = setInterval(loadData, 300000)
+    
+    return () => clearInterval(interval)
   }, [])
 
   if (state.status === 'loading') {
