@@ -1,31 +1,43 @@
 @import 'tailwindcss';
 
 @theme {
-  --color-background: rgb(11 15 25 / <alpha-value>);
-  --color-surface-primary: rgb(17 24 39 / <alpha-value>);
-  --color-surface-secondary: rgb(26 32 44 / <alpha-value>);
-  --color-text-primary: rgb(243 244 246 / <alpha-value>);
-  --color-text-secondary: rgb(156 163 175 / <alpha-value>);
-  --color-border-color: rgb(45 55 72 / <alpha-value>);
+  --color-background: rgb(10 10 20 / <alpha-value>);
+  --color-surface-primary: rgb(17 17 35 / <alpha-value>);
+  --color-surface-secondary: rgb(23 23 45 / <alpha-value>);
+  --color-text-primary: rgb(248 250 252 / <alpha-value>);
+  --color-text-secondary: rgb(148 163 184 / <alpha-value>);
+  --color-border-color: rgb(51 51 102 / <alpha-value>);
   --color-accent-blue: rgb(59 130 246 / <alpha-value>);
+  --color-accent-cyan: rgb(6 182 212 / <alpha-value>);
+  --color-accent-purple: rgb(168 85 247 / <alpha-value>);
+  --color-accent-indigo: rgb(99 102 241 / <alpha-value>);
+  --color-accent-pink: rgb(236 72 153 / <alpha-value>);
   --color-accent-emerald: rgb(16 185 129 / <alpha-value>);
   --color-accent-amber: rgb(245 158 11 / <alpha-value>);
   --color-accent-red: rgb(239 68 68 / <alpha-value>);
+  --color-accent-orange: rgb(249 115 22 / <alpha-value>);
+  --color-accent-teal: rgb(20 184 166 / <alpha-value>);
 }
 
 :root {
   --font-geist-sans: 'Geist', 'Geist Fallback', sans-serif;
   --font-geist-mono: 'Geist Mono', 'Geist Mono Fallback', monospace;
-  --background: #0B0F19;
-  --surface-primary: #111827;
-  --surface-secondary: #1A202C;
-  --text-primary: #F3F4F6;
-  --text-secondary: #9CA3AF;
-  --border-color: #2D3748;
+  --background: #0A0A14;
+  --surface-primary: #111123;
+  --surface-secondary: #17172D;
+  --text-primary: #F8FAFC;
+  --text-secondary: #94A3B8;
+  --border-color: #333366;
   --accent-blue: #3B82F6;
+  --accent-cyan: #06B6D4;
+  --accent-purple: #A855F7;
+  --accent-indigo: #6366F1;
+  --accent-pink: #EC4899;
   --accent-emerald: #10B981;
   --accent-amber: #F59E0B;
   --accent-red: #EF4444;
+  --accent-orange: #F97316;
+  --accent-teal: #14B8A6;
   color-scheme: dark;
 }
 
@@ -39,11 +51,28 @@ html {
 }
 
 body {
-  background-color: var(--background);
+  background: linear-gradient(135deg, #0A0A14 0%, #111123 50%, #17172D 100%);
+  background-attachment: fixed;
   color: var(--text-primary);
   font-family: var(--font-geist-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Animated background gradient */
+@keyframes gradient-shift {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.animated-gradient-bg {
+  background: linear-gradient(135deg, #0A0A14, #1a0a2e, #16213e, #0A0A14);
+  background-size: 400% 400%;
+  animation: gradient-shift 15s ease infinite;
 }
 
 @layer base {
@@ -78,30 +107,95 @@ body {
 
 @layer components {
   .card {
-    @apply rounded-lg bg-surface-primary border border-border-color p-4;
+    @apply rounded-xl bg-surface-primary/50 backdrop-blur-sm border border-border-color/50 p-6 shadow-lg hover:shadow-2xl hover:border-accent-purple/30 transition-all duration-300;
+  }
+
+  .card-gradient {
+    @apply card bg-gradient-to-br from-surface-primary/80 to-surface-secondary/80;
   }
 
   .btn-primary {
-    @apply inline-flex items-center justify-center rounded-lg bg-accent-blue px-4 py-2 font-medium text-white hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply inline-flex items-center justify-center rounded-lg bg-gradient-to-r from-accent-purple to-accent-pink px-5 py-2.5 font-medium text-white hover:shadow-lg hover:shadow-accent-purple/50 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105;
   }
 
   .btn-secondary {
-    @apply inline-flex items-center justify-center rounded-lg bg-surface-secondary border border-border-color px-4 py-2 font-medium text-text-primary hover:bg-surface-primary transition-colors;
+    @apply inline-flex items-center justify-center rounded-lg bg-surface-secondary/80 backdrop-blur-sm border border-border-color/50 px-5 py-2.5 font-medium text-text-primary hover:bg-surface-primary hover:border-accent-cyan/50 transition-all duration-300 hover:scale-105;
+  }
+
+  .btn-gradient-blue {
+    @apply inline-flex items-center justify-center rounded-lg bg-gradient-to-r from-accent-blue to-accent-cyan px-5 py-2.5 font-medium text-white hover:shadow-lg hover:shadow-accent-blue/50 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105;
   }
 
   .badge {
-    @apply inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium;
+    @apply inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium backdrop-blur-sm;
   }
 
   .badge-success {
-    @apply bg-accent-emerald/20 text-accent-emerald;
+    @apply bg-accent-emerald/20 text-accent-emerald border border-accent-emerald/30;
   }
 
   .badge-warning {
-    @apply bg-accent-amber/20 text-accent-amber;
+    @apply bg-accent-amber/20 text-accent-amber border border-accent-amber/30;
   }
 
   .badge-danger {
-    @apply bg-accent-red/20 text-accent-red;
+    @apply bg-accent-red/20 text-accent-red border border-accent-red/30;
+  }
+
+  .badge-info {
+    @apply bg-accent-cyan/20 text-accent-cyan border border-accent-cyan/30;
+  }
+
+  .badge-purple {
+    @apply bg-accent-purple/20 text-accent-purple border border-accent-purple/30;
+  }
+
+  .badge-pink {
+    @apply bg-accent-pink/20 text-accent-pink border border-accent-pink/30;
+  }
+
+  /* Glassmorphism effect */
+  .glass {
+    @apply bg-surface-primary/30 backdrop-blur-lg border border-white/10;
+  }
+
+  /* Gradient text */
+  .gradient-text {
+    @apply bg-gradient-to-r from-accent-purple via-accent-pink to-accent-cyan bg-clip-text text-transparent;
+  }
+
+  .gradient-text-blue {
+    @apply bg-gradient-to-r from-accent-blue to-accent-cyan bg-clip-text text-transparent;
+  }
+
+  /* Animated shine effect */
+  @keyframes shine {
+    to {
+      background-position: 200% center;
+    }
+  }
+
+  @keyframes shimmer {
+    0% {
+      transform: translateX(-100%);
+    }
+    100% {
+      transform: translateX(100%);
+    }
+  }
+
+  .animate-shimmer {
+    animation: shimmer 2s infinite;
+  }
+
+  .btn-shine {
+    background: linear-gradient(
+      90deg,
+      rgba(168, 85, 247, 0.8) 0%,
+      rgba(236, 72, 153, 1) 50%,
+      rgba(168, 85, 247, 0.8) 100%
+    );
+    background-size: 200% auto;
+    animation: shine 3s linear infinite;
   }
 }
