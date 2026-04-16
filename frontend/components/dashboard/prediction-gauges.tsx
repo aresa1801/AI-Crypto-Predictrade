@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, memo } from 'react'
 import { Prediction } from '@/lib/types'
 import { fetchAIPredictions } from '@/lib/api/predictions'
 import { ArrowUp, ArrowDown, TrendingUp } from 'lucide-react'
@@ -15,7 +15,8 @@ interface GaugeProps {
   index: number
 }
 
-function ConfidenceGauge({ label, confidence, direction, asset, index }: GaugeProps) {
+// Memoize the gauge component to prevent unnecessary re-renders
+const ConfidenceGauge = memo(function ConfidenceGauge({ label, confidence, direction, asset, index }: GaugeProps) {
   const circumference = 2 * Math.PI * 45
   const strokeDashoffset = circumference - (confidence / 100) * circumference
   
@@ -102,7 +103,7 @@ function ConfidenceGauge({ label, confidence, direction, asset, index }: GaugePr
       </div>
     </div>
   )
-}
+})
 
 function PredictionGaugesContent() {
   const [state, setState] = useState<{
@@ -111,34 +112,34 @@ function PredictionGaugesContent() {
     error: Error | null
   }>({ status: 'loading', data: null, error: null })
 
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        // Fetch real AI predictions from API
-        const predictions = await fetchAIPredictions()
-        
-        // Sort by confidence and get top 4
-        const topPredictions = predictions
-          .sort((a, b) => (b.confidenceLevel || b.confidence) - (a.confidenceLevel || a.confidence))
-          .slice(0, 4)
-        
-        setState({ status: 'success', data: topPredictions, error: null })
-      } catch (error) {
-        setState({
-          status: 'error',
-          data: null,
-          error: error instanceof Error ? error : new Error('Failed to load predictions'),
-        })
-      }
+  const loadData = useCallback(async () => {
+    try {
+      // Fetch real AI predictions from API
+      const predictions = await fetchAIPredictions()
+      
+      // Sort by confidence and get top 4
+      const topPredictions = predictions
+        .sort((a, b) => (b.confidenceLevel || b.confidence) - (a.confidenceLevel || a.confidence))
+        .slice(0, 4)
+      
+      setState({ status: 'success', data: topPredictions, error: null })
+    } catch (error) {
+      setState({
+        status: 'error',
+        data: null,
+        error: error instanceof Error ? error : new Error('Failed to load predictions'),
+      })
     }
+  }, [])
 
+  useEffect(() => {
     loadData()
     
     // Refresh predictions every 5 minutes
     const interval = setInterval(loadData, 300000)
     
     return () => clearInterval(interval)
-  }, [])
+  }, [loadData])
 
   if (state.status === 'loading') {
     return <CardSkeleton />

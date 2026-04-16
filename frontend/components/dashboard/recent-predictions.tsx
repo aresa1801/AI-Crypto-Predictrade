@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, memo } from 'react'
 import { Prediction } from '@/lib/types'
 import { fetchAIPredictions } from '@/lib/api/predictions'
 import { TrendingUp, TrendingDown, Clock } from 'lucide-react'
@@ -38,28 +38,28 @@ function RecentPredictionsContent() {
     error: Error | null
   }>({ status: 'loading', data: null, error: null })
 
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        // Fetch real AI predictions from API
-        const predictions = await fetchAIPredictions()
-        setState({ status: 'success', data: predictions, error: null })
-      } catch (error) {
-        setState({
-          status: 'error',
-          data: null,
-          error: error instanceof Error ? error : new Error('Failed to load predictions'),
-        })
-      }
+  const loadData = useCallback(async () => {
+    try {
+      // Fetch real AI predictions from API
+      const predictions = await fetchAIPredictions()
+      setState({ status: 'success', data: predictions, error: null })
+    } catch (error) {
+      setState({
+        status: 'error',
+        data: null,
+        error: error instanceof Error ? error : new Error('Failed to load predictions'),
+      })
     }
+  }, [])
 
+  useEffect(() => {
     loadData()
     
     // Refresh predictions every 5 minutes
     const interval = setInterval(loadData, 300000)
     
     return () => clearInterval(interval)
-  }, [])
+  }, [loadData])
 
   if (state.status === 'loading') {
     return <TableSkeleton rows={5} />

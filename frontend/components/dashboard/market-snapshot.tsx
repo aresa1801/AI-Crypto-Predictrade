@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, memo } from 'react'
 import { MarketSnapshot as MarketSnapshotType, CryptoAsset } from '@/lib/types'
 import { fetchGlobalMarketData, fetchCryptoMarketData } from '@/lib/api/coingecko'
 import { TrendingUp, TrendingDown, BarChart3, Activity } from 'lucide-react'
@@ -18,39 +18,39 @@ function MarketSnapshotContent() {
     error: Error | null
   }>({ status: 'loading', data: null, error: null })
 
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        // Fetch real data from CoinGecko API
-        const [marketData, assetsData] = await Promise.all([
-          fetchGlobalMarketData(),
-          fetchCryptoMarketData(),
-        ])
+  const loadData = useCallback(async () => {
+    try {
+      // Fetch real data from CoinGecko API
+      const [marketData, assetsData] = await Promise.all([
+        fetchGlobalMarketData(),
+        fetchCryptoMarketData(),
+      ])
 
-        setState({
-          status: 'success',
-          data: {
-            market: marketData,
-            assets: assetsData.slice(0, 3), // Top 3 assets
-          },
-          error: null,
-        })
-      } catch (error) {
-        setState({
-          status: 'error',
-          data: null,
-          error: error instanceof Error ? error : new Error('Failed to load market data'),
-        })
-      }
+      setState({
+        status: 'success',
+        data: {
+          market: marketData,
+          assets: assetsData.slice(0, 3), // Top 3 assets
+        },
+        error: null,
+      })
+    } catch (error) {
+      setState({
+        status: 'error',
+        data: null,
+        error: error instanceof Error ? error : new Error('Failed to load market data'),
+      })
     }
+  }, [])
 
+  useEffect(() => {
     loadData()
     
     // Refresh data every 60 seconds
     const interval = setInterval(loadData, 60000)
     
     return () => clearInterval(interval)
-  }, [])
+  }, [loadData])
 
   if (state.status === 'loading') {
     return <CardSkeleton />

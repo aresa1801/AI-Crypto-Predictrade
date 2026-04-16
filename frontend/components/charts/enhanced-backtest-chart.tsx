@@ -1,6 +1,6 @@
 'use client'
 
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useLayoutEffect, useRef, useState, useMemo, memo } from 'react'
 import {
   LineChart,
   Line,
@@ -23,7 +23,7 @@ interface EnhancedBacktestChartProps {
   title?: string
 }
 
-export function EnhancedBacktestChart({
+function EnhancedBacktestChartComponent({
   data,
   title = 'Equity Curve',
 }: EnhancedBacktestChartProps) {
@@ -49,6 +49,25 @@ export function EnhancedBacktestChart({
     return () => resizeObserver.disconnect()
   }, [])
 
+  // Memoize calculations to avoid re-computing on every render
+  const { minValue, maxValue, padding, sampledData } = useMemo(() => {
+    if (!data || data.length === 0) {
+      return { minValue: 0, maxValue: 0, padding: 0, sampledData: [] }
+    }
+    
+    // Sample data if too many points (> 100) for better performance
+    const sampledData = data.length > 100 
+      ? data.filter((_, i) => i % Math.ceil(data.length / 100) === 0)
+      : data
+    
+    const minValue = Math.min(...sampledData.map((d) => d.value))
+    const maxValue = Math.max(...sampledData.map((d) => d.value))
+    const range = maxValue - minValue
+    const padding = range * 0.1
+    
+    return { minValue, maxValue, padding, sampledData }
+  }, [data])
+
   if (!data || data.length === 0) {
     return (
       <div className="text-center py-8 text-text-secondary">
@@ -57,18 +76,13 @@ export function EnhancedBacktestChart({
     )
   }
 
-  const minValue = Math.min(...data.map((d) => d.value))
-  const maxValue = Math.max(...data.map((d) => d.value))
-  const range = maxValue - minValue
-  const padding = range * 0.1
-
   return (
     <div className="space-y-4" ref={containerRef}>
       <h4 className="text-sm font-medium text-text-primary">{title}</h4>
 
       <ResponsiveContainer width="100%" height={containerSize.height}>
         <LineChart
-          data={data}
+          data={sampledData}
           margin={{ top: 5, right: 30, left: 0, bottom: 5 }}
         >
           <CartesianGrid strokeDasharray="3 3" stroke={chartColors.border} />
@@ -76,7 +90,7 @@ export function EnhancedBacktestChart({
             dataKey="date"
             stroke={chartColors.text}
             style={{ fontSize: '12px' }}
-            interval={Math.floor(data.length / 6)}
+            interval={Math.floor(sampledData.length / 6)}
           />
           <YAxis
             stroke={chartColors.text}
@@ -118,3 +132,6 @@ export function EnhancedBacktestChart({
     </div>
   )
 }
+
+// Memoize the component to prevent unnecessary re-renders
+export const EnhancedBacktestChart = memo(EnhancedBacktestChartComponent)

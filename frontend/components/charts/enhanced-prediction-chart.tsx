@@ -1,6 +1,6 @@
 'use client'
 
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useLayoutEffect, useRef, useState, useMemo, memo } from 'react'
 import {
   LineChart,
   Line,
@@ -24,7 +24,7 @@ interface EnhancedPredictionChartProps {
   modelVersion?: string
 }
 
-export function EnhancedPredictionChart({
+function EnhancedPredictionChartComponent({
   asset,
   data,
   modelVersion = '2.1',
@@ -51,7 +51,16 @@ export function EnhancedPredictionChart({
     return () => resizeObserver.disconnect()
   }, [])
 
-  const regimeMarkers = getRegimeShiftMarkers(data)
+  // Memoize regime markers calculation
+  const regimeMarkers = useMemo(() => getRegimeShiftMarkers(data), [data])
+  
+  // Sample data if too many points for better performance
+  const sampledData = useMemo(() => {
+    if (!data || data.length === 0) return []
+    return data.length > 100 
+      ? data.filter((_, i) => i % Math.ceil(data.length / 100) === 0)
+      : data
+  }, [data])
 
   if (!data || data.length === 0) {
     return (
@@ -73,7 +82,7 @@ export function EnhancedPredictionChart({
       </div>
 
       <ResponsiveContainer width="100%" height={containerSize.height}>
-        <AreaChart data={data} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
+        <AreaChart data={sampledData} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
           <defs>
             <linearGradient id="priceGradient" x1="0" y1="0" x2="0" y2="1">
               <stop offset="5%" stopColor={chartColors.primary} stopOpacity={0.3} />
@@ -119,7 +128,7 @@ export function EnhancedPredictionChart({
 
           <Legend wrapperStyle={{ paddingTop: '20px' }} />
 
-          {data[0]?.ci_low && data[0]?.ci_high && (
+          {sampledData[0]?.ci_low && sampledData[0]?.ci_high && (
             <Area
               type="monotone"
               dataKey="ci_low"
@@ -143,7 +152,7 @@ export function EnhancedPredictionChart({
             isAnimationActive={false}
           />
 
-          {data[0]?.sma20 && (
+          {sampledData[0]?.sma20 && (
             <Line
               type="monotone"
               dataKey="sma20"
@@ -156,7 +165,7 @@ export function EnhancedPredictionChart({
             />
           )}
 
-          {data[0]?.bb_upper && (
+          {sampledData[0]?.bb_upper && (
             <Line
               type="monotone"
               dataKey="bb_upper"
@@ -169,7 +178,7 @@ export function EnhancedPredictionChart({
             />
           )}
 
-          {data[0]?.bb_lower && (
+          {sampledData[0]?.bb_lower && (
             <Line
               type="monotone"
               dataKey="bb_lower"
@@ -230,3 +239,6 @@ export function EnhancedPredictionChart({
     </div>
   )
 }
+
+// Memoize the component to prevent unnecessary re-renders
+export const EnhancedPredictionChart = memo(EnhancedPredictionChartComponent)
