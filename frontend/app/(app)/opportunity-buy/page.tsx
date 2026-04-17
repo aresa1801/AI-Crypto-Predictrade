@@ -10,6 +10,9 @@ import { fetchOpportunityBuys, OpportunityAsset, SignalStrength, RiskLevel } fro
 
 type SortKey = 'score' | 'rr' | 'confidence' | 'rsi'
 
+// Keep in sync with OPP_CACHE_TTL in opportunity-buy.ts
+const AUTO_REFRESH_INTERVAL_MS = 5 * 60 * 1000
+
 const SIGNAL_LABELS: Record<SignalStrength, string> = {
   STRONG_BUY: '🔥 Strong Buy',
   BUY: 'Buy',
@@ -88,7 +91,7 @@ export default function OpportunityBuyPage() {
 
   useEffect(() => {
     loadData()
-    const interval = setInterval(() => loadData(true), 300_000) // 5 min
+    const interval = setInterval(() => loadData(true), AUTO_REFRESH_INTERVAL_MS) // 5 min
     return () => clearInterval(interval)
   }, [loadData])
 

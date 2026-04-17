@@ -93,14 +93,48 @@ export interface OpportunityAsset {
 }
 
 // ---------------------------------------------------------------------------
+// Named constants — scoring thresholds & parameters
+// ---------------------------------------------------------------------------
+
+// RSI thresholds (freqtrade-inspired)
+const RSI_EXTREMELY_OVERSOLD = 20
+const RSI_OVERSOLD = 30
+const RSI_APPROACHING_OVERSOLD = 40
+const RSI_NEUTRAL_LOW = 50
+const RSI_NEUTRAL_HIGH = 60
+
+// Signal strength thresholds (composite score 0-100)
+const STRONG_BUY_THRESHOLD = 78
+const BUY_THRESHOLD = 68
+const MIN_OPPORTUNITY_SCORE = 62  // Minimum score to include in results
+
+// Risk classification (market cap in USD, volatility in %)
+const LARGE_CAP_THRESHOLD = 50e9
+const MEDIUM_CAP_THRESHOLD = 5e9
+const LOW_VOLATILITY_THRESHOLD = 5
+const MEDIUM_VOLATILITY_THRESHOLD = 10
+
+// Auto-refresh interval (ms) — matches cache TTL in opportunity-buy module
+const AUTO_REFRESH_INTERVAL_MS = 5 * 60 * 1000
+
+// MACD division guard — prevents division by zero
+const MACD_EPSILON = 0.001
+
+// ---------------------------------------------------------------------------
 // Seeded pseudo-random number generator (deterministic per asset + timestamp)
+//
+// Implementation: Linear Congruential Generator (LCG) with parameters from
+// Numerical Recipes (Knuth Vol. 2). Given the same seed, it always produces
+// the same sequence, which ensures indicator simulations are stable within
+// a 5-minute cache window (seed changes with timeSeed every 5 min).
 // ---------------------------------------------------------------------------
 
 function seededRand(seed: number): () => number {
-  let s = seed
+  // LCG: keep state within 32-bit unsigned integer range using bitwise ops
+  let s = seed >>> 0  // coerce to uint32
   return () => {
-    s = (s * 1664525 + 1013904223) & 0xffffffff
-    return (s >>> 0) / 0xffffffff
+    s = ((Math.imul(s, 1664525) + 1013904223) | 0) >>> 0
+    return s / 0xffffffff
   }
 }
 
@@ -174,24 +208,24 @@ function simulateIndicators(asset: CryptoAsset, seed: number): IndicatorSnapshot
 function scoreTechnical(asset: CryptoAsset, ind: IndicatorSnapshot): TechnicalScores {
   // RSI Score: highest when RSI is oversold (< 30)
   let rsiScore: number
-  if (ind.rsi14 < 20) rsiScore = 95
-  else if (ind.rsi14 < 30) rsiScore = 80 + (30 - ind.rsi14) * 1.5
-  else if (ind.rsi14 < 40) rsiScore = 55 + (40 - ind.rsi14) * 2.5
-  else if (ind.rsi14 < 50) rsiScore = 35 + (50 - ind.rsi14) * 2
-  else if (ind.rsi14 < 60) rsiScore = 20
-  else rsiScore = Math.max(0, 20 - (ind.rsi14 - 60) * 0.5)
+  if (ind.rsi14 < RSI_EXTREMELY_OVERSOLD) rsiScore = 95
+  else if (ind.rsi14 < RSI_OVERSOLD) rsiScore = 80 + (RSI_OVERSOLD - ind.rsi14) * 1.5
+  else if (ind.rsi14 < RSI_APPROACHING_OVERSOLD) rsiScore = 55 + (RSI_APPROACHING_OVERSOLD - ind.rsi14) * 2.5
+  else if (ind.rsi14 < RSI_NEUTRAL_LOW) rsiScore = 35 + (RSI_NEUTRAL_LOW - ind.rsi14) * 2
+  else if (ind.rsi14 < RSI_NEUTRAL_HIGH) rsiScore = 20
+  else rsiScore = Math.max(0, 20 - (ind.rsi14 - RSI_NEUTRAL_HIGH) * 0.5)
 
   // MACD Score: bullish when histogram positive and MACD > Signal
   let macdScore: number
   if (ind.macdHistogram > 0 && ind.macd > ind.macdSignal) {
     // Bullish crossover
-    const strength = Math.abs(ind.macdHistogram) / (Math.abs(ind.macd) + 0.001)
+    const strength = Math.abs(ind.macdHistogram) / (Math.abs(ind.macd) + MACD_EPSILON)
     macdScore = 60 + Math.min(40, strength * 100)
   } else if (ind.macdHistogram < 0 && Math.abs(ind.macdHistogram) < Math.abs(ind.macd) * 0.1) {
     // Near crossover
     macdScore = 45
   } else {
-    macdScore = Math.max(10, 40 - Math.abs(ind.macdHistogram / (ind.macd + 0.001)) * 30)
+    macdScore = Math.max(10, 40 - Math.abs(ind.macdHistogram / (ind.macd + MACD_EPSILON)) * 30)
   }
 
   // Bollinger Band Score: highest when price near lower band
@@ -435,8 +469,8 @@ function generateReasoning(
 // ---------------------------------------------------------------------------
 
 function classifySignal(score: number): SignalStrength {
-  if (score >= 78) return 'STRONG_BUY'
-  if (score >= 68) return 'BUY'
+  if (score >= STRONG_BUY_THRESHOLD) return 'STRONG_BUY'
+  if (score >= BUY_THRESHOLD) return 'BUY'
   return 'ACCUMULATE'
 }
 
@@ -444,8 +478,8 @@ function classifyRisk(asset: CryptoAsset, ind: IndicatorSnapshot): RiskLevel {
   const marketCap = asset.marketCap || 0
   const volatility = Math.abs(asset.change24h)
 
-  if (marketCap > 50e9 && volatility < 5) return 'Low'
-  if (marketCap > 5e9 && volatility < 10) return 'Medium'
+  if (marketCap > LARGE_CAP_THRESHOLD && volatility < LOW_VOLATILITY_THRESHOLD) return 'Low'
+  if (marketCap > MEDIUM_CAP_THRESHOLD && volatility < MEDIUM_VOLATILITY_THRESHOLD) return 'Medium'
   return 'High'
 }
 
@@ -545,7 +579,9 @@ export async function fetchOpportunityBuys(forceRefresh = false): Promise<Opport
 
   for (let i = 0; i < assets.length; i++) {
     const asset = assets[i]
-    const seed = hashString(asset.id) ^ (timeSeed * 6364136223846793005)
+    // Combine asset hash and time seed safely within 32-bit integer range
+    const assetHash = hashString(asset.id)
+    const seed = (Math.imul(assetHash, timeSeed + 1) ^ assetHash) >>> 0
 
     const indicators = simulateIndicators(asset, seed)
     const technical = scoreTechnical(asset, indicators)
@@ -559,8 +595,8 @@ export async function fetchOpportunityBuys(forceRefresh = false): Promise<Opport
       prediction.composite * 0.30
     )
 
-    // Only include strong buy signals (score >= 62)
-    if (compositeScore < 62) continue
+    // Only include strong buy signals (score >= MIN_OPPORTUNITY_SCORE)
+    if (compositeScore < MIN_OPPORTUNITY_SCORE) continue
 
     const entryExit = calculateEntryExit(asset, indicators)
     const reasoning = generateReasoning(asset, indicators, technical, sentiment, prediction)
