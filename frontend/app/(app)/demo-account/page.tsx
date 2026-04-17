@@ -172,22 +172,25 @@ export default function DemoAccountPage() {
     try {
       const data = await fetchOpportunityBuys(false, '4h')
       setOpportunities(data.opportunities.slice(0, 10))
-      if (data.opportunities.length > 0 && !selectedOpp) {
-        setSelectedOpp(data.opportunities[0])
-        setExitPrice(data.opportunities[0].entryExit.target2.toFixed(
-          data.opportunities[0].asset.price > 100 ? 2 : 4
-        ))
-      }
+      setSelectedOpp(prev => {
+        if (!prev && data.opportunities.length > 0) {
+          setExitPrice(data.opportunities[0].entryExit.target2.toFixed(
+            data.opportunities[0].asset.price > 100 ? 2 : 4
+          ))
+          return data.opportunities[0]
+        }
+        return prev
+      })
     } catch {
       // silently use empty list
     } finally {
       setLoadingOpp(false)
     }
-  }, [selectedOpp])
+  }, [])
 
   useEffect(() => {
     loadOpportunities()
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [loadOpportunities])
 
   // When selected opportunity changes, pre-fill exit price
   useEffect(() => {
@@ -214,32 +217,35 @@ export default function DemoAccountPage() {
     if (!isNaN(n) && n > 0 && n <= 100) setPctPerTrade(n)
   }
 
+  function tradeStatus(exitPrice: number, entryPrice: number, targetExit: number, stopLoss: number): DemoTrade['status'] {
+    if (exitPrice >= targetExit) return 'correct'
+    if (exitPrice <= stopLoss) return 'failed'
+    // between stop and target: correct if above entry, failed if below
+    return exitPrice >= entryPrice ? 'correct' : 'failed'
+  }
+
   function executeBuy() {
     if (!selectedOpp) { setExecError('Please select an asset.'); return }
-    const exit = parseFloat(exitPrice)
-    if (isNaN(exit) || exit <= 0) { setExecError('Enter a valid exit price.'); return }
+    const targetExit = parseFloat(exitPrice)
+    if (isNaN(targetExit) || targetExit <= 0) { setExecError('Enter a valid exit price.'); return }
     if (capitalPerTrade > availableCapital) { setExecError('Insufficient available capital.'); return }
 
     const entry = (selectedOpp.entryExit.entryLow + selectedOpp.entryExit.entryHigh) / 2
     const qty = capitalPerTrade / entry
-    const pnl = (exit - entry) * qty
-    const pnlPct = ((exit - entry) / entry) * 100
-    const status: DemoTrade['status'] = exit >= entry ? 'correct' : 'failed'
 
     const trade: DemoTrade = {
       id: `trade-${Date.now()}`,
       asset: selectedOpp.asset.name,
       symbol: selectedOpp.asset.symbol,
       entryPrice: entry,
-      exitPrice: exit,
+      exitPrice: targetExit,
       capitalUsed: capitalPerTrade,
       quantity: qty,
-      pnl,
-      pnlPct,
-      status,
+      pnl: 0,
+      pnlPct: 0,
+      status: 'open',
       openedAt: new Date(),
-      closedAt: new Date(),
-      targetExit: selectedOpp.entryExit.target2,
+      targetExit,
       stopLoss: selectedOpp.entryExit.stopLoss,
       signal: selectedOpp.signalStrength,
     }
@@ -254,7 +260,8 @@ export default function DemoAccountPage() {
       const closePrice = asWin ? t.targetExit : t.stopLoss
       const pnl = (closePrice - t.entryPrice) * t.quantity
       const pnlPct = ((closePrice - t.entryPrice) / t.entryPrice) * 100
-      return { ...t, exitPrice: closePrice, pnl, pnlPct, status: asWin ? 'correct' : 'failed', closedAt: new Date() }
+      const status = tradeStatus(closePrice, t.entryPrice, t.targetExit, t.stopLoss)
+      return { ...t, exitPrice: closePrice, pnl, pnlPct, status, closedAt: new Date() }
     }))
   }
 
