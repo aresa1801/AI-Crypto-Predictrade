@@ -5,7 +5,8 @@ import {
   FlaskConical, TrendingDown, DollarSign, Percent,
   ShoppingCart, History, Trophy, Target, AlertTriangle, Plus,
   CheckCircle2, XCircle, Clock, RefreshCw, Wallet, BarChart2,
-  ArrowUpRight, ArrowDownRight, X,
+  ArrowUpRight, ArrowDownRight, X, Bot, Play, Square, Activity,
+  ChevronRight, Zap,
 } from 'lucide-react'
 import { fetchOpportunityBuys, OpportunityAsset, formatPrice } from '@/lib/api/opportunity-buy'
 
@@ -29,6 +30,14 @@ export interface DemoTrade {
   targetExit: number
   stopLoss: number
   signal: string
+  tradeMode: 'manual' | 'auto'
+}
+
+export interface AutoTradeLogEntry {
+  id: string
+  timestamp: Date
+  message: string
+  type: 'info' | 'success' | 'error' | 'skip'
 }
 
 // ---------------------------------------------------------------------------
@@ -118,14 +127,22 @@ export default function DemoAccountPage() {
   // Available USDT (starts = capital, shrinks as open trades lock funds)
   const [trades, setTrades] = useState<DemoTrade[]>([])
 
+  // Trade mode: manual or auto
+  const [tradeMode, setTradeMode] = useState<'manual' | 'auto'>('manual')
+
   // Opportunity Buy data
   const [opportunities, setOpportunities] = useState<OpportunityAsset[]>([])
   const [loadingOpp, setLoadingOpp] = useState(true)
 
-  // Execution Buy form
+  // Execution Buy form (manual)
   const [selectedOpp, setSelectedOpp] = useState<OpportunityAsset | null>(null)
   const [exitPrice, setExitPrice] = useState('')
   const [execError, setExecError] = useState('')
+
+  // Auto Trade state
+  const [autoRunning, setAutoRunning] = useState(false)
+  const [maxAutoTrades, setMaxAutoTrades] = useState(3)
+  const [autoLog, setAutoLog] = useState<AutoTradeLogEntry[]>([])
 
   // ---------------------------------------------------------------------------
   // Derived stats
@@ -248,6 +265,7 @@ export default function DemoAccountPage() {
       targetExit,
       stopLoss: selectedOpp.entryExit.stopLoss,
       signal: selectedOpp.signalStrength,
+      tradeMode: 'manual',
     }
 
     setTrades(prev => [trade, ...prev])
@@ -267,6 +285,86 @@ export default function DemoAccountPage() {
 
   function removeTrade(id: string) {
     setTrades(prev => prev.filter(t => t.id !== id))
+  }
+
+  async function executeAutoTrades(currentAvailableCapital: number, capitalPerTradeCurrent: number) {
+    if (autoRunning) return
+    setAutoRunning(true)
+
+    const addLog = (message: string, type: AutoTradeLogEntry['type']) => {
+      setAutoLog(prev => [
+        { id: `log-${Date.now()}-${Math.random()}`, timestamp: new Date(), message, type },
+        ...prev,
+      ])
+    }
+
+    addLog('Auto Trade engine started — fetching latest Opportunity Buy signals…', 'info')
+
+    let freshOpportunities = opportunities
+    try {
+      const data = await fetchOpportunityBuys(true, '4h')
+      freshOpportunities = data.opportunities
+      addLog(`Fetched ${freshOpportunities.length} opportunities from Opportunity Buy engine.`, 'info')
+    } catch {
+      addLog('Could not refresh opportunities — using cached data.', 'info')
+    }
+
+    const candidates = freshOpportunities.slice(0, maxAutoTrades)
+    let remainingCapital = currentAvailableCapital
+    let executed = 0
+
+    const newTrades: DemoTrade[] = []
+
+    for (const opp of candidates) {
+      if (remainingCapital < capitalPerTradeCurrent) {
+        addLog(`Skipped ${opp.asset.symbol}: insufficient available capital ($${formatUSDT(remainingCapital)} < $${formatUSDT(capitalPerTradeCurrent)}).`, 'skip')
+        continue
+      }
+
+      const entry = (opp.entryExit.entryLow + opp.entryExit.entryHigh) / 2
+      const targetExit = opp.entryExit.target1
+      const sl = opp.entryExit.stopLoss
+      const qty = capitalPerTradeCurrent / entry
+
+      const trade: DemoTrade = {
+        id: `auto-${Date.now()}-${Math.random()}`,
+        asset: opp.asset.name,
+        symbol: opp.asset.symbol,
+        entryPrice: entry,
+        exitPrice: targetExit,
+        capitalUsed: capitalPerTradeCurrent,
+        quantity: qty,
+        pnl: 0,
+        pnlPct: 0,
+        status: 'open',
+        openedAt: new Date(),
+        targetExit,
+        stopLoss: sl,
+        signal: opp.signalStrength,
+        tradeMode: 'auto',
+      }
+
+      newTrades.push(trade)
+      remainingCapital -= capitalPerTradeCurrent
+      executed++
+
+      addLog(
+        `✅ Auto-bought ${opp.asset.symbol} @ $${formatPrice(entry)} | Exit (T1): $${formatPrice(targetExit)} | SL: $${formatPrice(sl)} | Capital: $${formatUSDT(capitalPerTradeCurrent)}`,
+        'success',
+      )
+    }
+
+    if (newTrades.length > 0) {
+      setTrades(prev => [...newTrades.reverse(), ...prev])
+    }
+
+    if (executed === 0) {
+      addLog('No trades were executed. Check capital settings or available opportunities.', 'error')
+    } else {
+      addLog(`Auto Trade complete — ${executed} trade(s) opened. Exit set at Target 1; Stop Loss from system recommendation.`, 'info')
+    }
+
+    setAutoRunning(false)
   }
 
   // ---------------------------------------------------------------------------
@@ -419,173 +517,350 @@ export default function DemoAccountPage() {
         </div>
       </section>
 
-      {/* ── Execution Buy ───────────────────────────────────────────────────── */}
+      {/* ── Trade Mode Tabs ─────────────────────────────────────────────────── */}
       <section className="card-gradient p-6">
-        <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-4 flex items-center gap-2">
-          <ShoppingCart className="w-4 h-4 text-accent-emerald" /> Execution Buy
-          <span className="ml-auto text-[10px] normal-case font-normal text-text-secondary/50">
-            Signals from Opportunity Buy
-          </span>
-        </h2>
+        {/* Tab switcher */}
+        <div className="flex items-center gap-1 p-1 rounded-xl bg-surface-secondary/50 border border-border-color/40 mb-6 w-full sm:w-fit">
+          <button
+            onClick={() => setTradeMode('manual')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+              tradeMode === 'manual'
+                ? 'bg-accent-blue/20 border border-accent-blue/50 text-accent-blue shadow-sm'
+                : 'text-text-secondary hover:text-text-primary'
+            }`}
+          >
+            <ShoppingCart className="w-4 h-4" /> Manual Trade
+          </button>
+          <button
+            onClick={() => setTradeMode('auto')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+              tradeMode === 'auto'
+                ? 'bg-accent-emerald/20 border border-accent-emerald/50 text-accent-emerald shadow-sm'
+                : 'text-text-secondary hover:text-text-primary'
+            }`}
+          >
+            <Bot className="w-4 h-4" /> Auto Trade
+          </button>
+        </div>
 
         {loadingOpp ? (
           <div className="flex items-center gap-2 text-text-secondary text-sm py-4">
             <RefreshCw className="w-4 h-4 animate-spin" /> Loading opportunities…
           </div>
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Asset selector */}
-            <div>
-              <label className="block text-xs text-text-secondary mb-1.5">Select Asset (from Opportunity Buy)</label>
-              <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
-                {opportunities.length === 0 ? (
-                  <p className="text-text-secondary text-sm">No opportunities available.</p>
-                ) : opportunities.map(opp => {
-                  const isSelected = selectedOpp?.id === opp.id
-                  const signalColor =
-                    opp.signalStrength === 'STRONG_BUY' ? 'text-accent-emerald border-accent-emerald/40 bg-accent-emerald/10' :
-                    opp.signalStrength === 'BUY'         ? 'text-accent-blue border-accent-blue/40 bg-accent-blue/10' :
-                                                          'text-accent-amber border-accent-amber/40 bg-accent-amber/10'
-                  return (
-                    <button
-                      key={opp.id}
-                      onClick={() => setSelectedOpp(opp)}
-                      className={`w-full text-left px-3 py-2.5 rounded-lg border transition-all ${
-                        isSelected
-                          ? 'bg-surface-secondary/80 border-accent-blue/50 shadow-sm'
-                          : 'bg-surface-secondary/30 border-border-color/40 hover:border-accent-blue/30'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-sm text-text-primary">{opp.asset.symbol}</span>
-                          <span className="text-xs text-text-secondary">{opp.asset.name}</span>
+        ) : tradeMode === 'manual' ? (
+          /* ── Manual Trade ─────────────────────────────────────────────────── */
+          <>
+            <div className="flex items-center gap-2 mb-4">
+              <ShoppingCart className="w-4 h-4 text-accent-blue" />
+              <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider">Manual Trade</h2>
+              <span className="ml-auto text-[10px] normal-case font-normal text-text-secondary/50">
+                Pick an asset &amp; set your exit
+              </span>
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Asset selector */}
+              <div>
+                <label className="block text-xs text-text-secondary mb-1.5">Select Asset (from Opportunity Buy)</label>
+                <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+                  {opportunities.length === 0 ? (
+                    <p className="text-text-secondary text-sm">No opportunities available.</p>
+                  ) : opportunities.map(opp => {
+                    const isSelected = selectedOpp?.id === opp.id
+                    const signalColor =
+                      opp.signalStrength === 'STRONG_BUY' ? 'text-accent-emerald border-accent-emerald/40 bg-accent-emerald/10' :
+                      opp.signalStrength === 'BUY'         ? 'text-accent-blue border-accent-blue/40 bg-accent-blue/10' :
+                                                            'text-accent-amber border-accent-amber/40 bg-accent-amber/10'
+                    return (
+                      <button
+                        key={opp.id}
+                        onClick={() => setSelectedOpp(opp)}
+                        className={`w-full text-left px-3 py-2.5 rounded-lg border transition-all ${
+                          isSelected
+                            ? 'bg-surface-secondary/80 border-accent-blue/50 shadow-sm'
+                            : 'bg-surface-secondary/30 border-border-color/40 hover:border-accent-blue/30'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-sm text-text-primary">{opp.asset.symbol}</span>
+                            <span className="text-xs text-text-secondary">{opp.asset.name}</span>
+                          </div>
+                          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${signalColor}`}>
+                            {opp.signalStrength.replace('_', ' ')}
+                          </span>
                         </div>
-                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${signalColor}`}>
-                          {opp.signalStrength.replace('_', ' ')}
+                        <div className="flex gap-4 mt-1">
+                          <span className="text-[11px] text-text-secondary">
+                            Price: <span className="font-mono text-text-primary">${formatPrice(opp.asset.price)}</span>
+                          </span>
+                          <span className="text-[11px] text-text-secondary">
+                            Score: <span className="text-accent-blue font-semibold">{opp.compositeScore}</span>
+                          </span>
+                          <span className="text-[11px] text-text-secondary">
+                            R:R <span className="text-accent-emerald font-semibold">{opp.entryExit.riskRewardT2.toFixed(1)}x</span>
+                          </span>
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Trade parameters */}
+              <div className="space-y-4">
+                {selectedOpp && (
+                  <>
+                    {/* Entry info */}
+                    <div className="rounded-lg bg-surface-secondary/50 border border-border-color/40 p-4 space-y-2">
+                      <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wide">Entry Details</h3>
+                      <div className="grid grid-cols-2 gap-y-2 text-sm">
+                        <span className="text-text-secondary text-xs">Entry Low</span>
+                        <span className="font-mono text-accent-amber text-xs text-right">${formatPrice(selectedOpp.entryExit.entryLow)}</span>
+                        <span className="text-text-secondary text-xs">Entry High</span>
+                        <span className="font-mono text-accent-amber text-xs text-right">${formatPrice(selectedOpp.entryExit.entryHigh)}</span>
+                        <span className="text-text-secondary text-xs">Avg Entry</span>
+                        <span className="font-mono text-text-primary text-xs text-right font-semibold">
+                          ${formatPrice((selectedOpp.entryExit.entryLow + selectedOpp.entryExit.entryHigh) / 2)}
+                        </span>
+                        <span className="text-text-secondary text-xs">Stop Loss</span>
+                        <span className="font-mono text-accent-red text-xs text-right">${formatPrice(selectedOpp.entryExit.stopLoss)}</span>
+                        <span className="text-text-secondary text-xs">Target 1 / 2 / 3</span>
+                        <span className="font-mono text-accent-emerald text-xs text-right">
+                          ${formatPrice(selectedOpp.entryExit.target1)} / ${formatPrice(selectedOpp.entryExit.target2)} / ${formatPrice(selectedOpp.entryExit.target3)}
                         </span>
                       </div>
-                      <div className="flex gap-4 mt-1">
-                        <span className="text-[11px] text-text-secondary">
-                          Price: <span className="font-mono text-text-primary">${formatPrice(opp.asset.price)}</span>
-                        </span>
-                        <span className="text-[11px] text-text-secondary">
-                          Score: <span className="text-accent-blue font-semibold">{opp.compositeScore}</span>
-                        </span>
-                        <span className="text-[11px] text-text-secondary">
-                          R:R <span className="text-accent-emerald font-semibold">{opp.entryExit.riskRewardT2.toFixed(1)}x</span>
-                        </span>
+                    </div>
+
+                    {/* Exit point input */}
+                    <div>
+                      <label className="block text-xs text-text-secondary mb-1.5">
+                        Exit Price <span className="text-text-secondary/50">(your target exit)</span>
+                      </label>
+                      <div className="relative">
+                        <Target className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary w-4 h-4" />
+                        <input
+                          type="number"
+                          step="any"
+                          value={exitPrice}
+                          onChange={e => setExitPrice(e.target.value)}
+                          className="w-full pl-9 pr-4 py-2.5 rounded-lg bg-surface-secondary/60 border border-border-color/60 text-text-primary text-sm font-mono focus:outline-none focus:border-accent-emerald/60 focus:ring-1 focus:ring-accent-emerald/30 transition-all"
+                        />
                       </div>
+                      <div className="flex gap-2 mt-2">
+                        {[
+                          { label: 'T1', val: selectedOpp.entryExit.target1 },
+                          { label: 'T2', val: selectedOpp.entryExit.target2 },
+                          { label: 'T3', val: selectedOpp.entryExit.target3 },
+                          { label: 'SL', val: selectedOpp.entryExit.stopLoss },
+                        ].map(({ label, val }) => (
+                          <button
+                            key={label}
+                            onClick={() => setExitPrice(val.toFixed(selectedOpp.asset.price > 100 ? 2 : 4))}
+                            className={`text-[11px] px-2.5 py-1 rounded-md border transition-all ${
+                              label === 'SL'
+                                ? 'bg-accent-red/10 border-accent-red/40 text-accent-red hover:bg-accent-red/20'
+                                : 'bg-accent-emerald/10 border-accent-emerald/40 text-accent-emerald hover:bg-accent-emerald/20'
+                            }`}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Trade preview */}
+                    {(() => {
+                      const entry = (selectedOpp.entryExit.entryLow + selectedOpp.entryExit.entryHigh) / 2
+                      const exit = parseFloat(exitPrice)
+                      if (isNaN(exit) || exit <= 0 || entry <= 0) return null
+                      const qty = capitalPerTrade / entry
+                      const pnl = (exit - entry) * qty
+                      const pnlPct = ((exit - entry) / entry) * 100
+                      const isProfit = pnl >= 0
+                      return (
+                        <div className={`rounded-lg border p-3 ${isProfit ? 'bg-accent-emerald/5 border-accent-emerald/30' : 'bg-accent-red/5 border-accent-red/30'}`}>
+                          <div className="text-xs font-semibold text-text-secondary uppercase tracking-wide mb-2">Trade Preview</div>
+                          <div className="grid grid-cols-2 gap-y-1.5 text-xs">
+                            <span className="text-text-secondary">Capital Used</span>
+                            <span className="font-mono text-text-primary text-right">${formatUSDT(capitalPerTrade)}</span>
+                            <span className="text-text-secondary">Quantity</span>
+                            <span className="font-mono text-text-primary text-right">{qty.toFixed(6)} {selectedOpp.asset.symbol}</span>
+                            <span className="text-text-secondary">Est. P&L</span>
+                            <span className={`font-mono font-bold text-right ${isProfit ? 'text-accent-emerald' : 'text-accent-red'}`}>
+                              {isProfit ? '+' : ''}${formatUSDT(pnl)} ({formatPct(pnlPct)})
+                            </span>
+                          </div>
+                        </div>
+                      )
+                    })()}
+
+                    {execError && (
+                      <div className="flex items-center gap-2 text-accent-red text-xs bg-accent-red/10 border border-accent-red/30 rounded-lg px-3 py-2">
+                        <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" /> {execError}
+                      </div>
+                    )}
+
+                    <button
+                      onClick={executeBuy}
+                      className="w-full py-3 rounded-xl bg-gradient-to-r from-accent-blue to-accent-indigo text-white font-bold text-sm hover:opacity-90 active:scale-95 transition-all shadow-lg shadow-accent-blue/20 flex items-center justify-center gap-2"
+                    >
+                      <Plus className="w-4 h-4" /> Execute Manual Trade
                     </button>
-                  )
-                })}
+                  </>
+                )}
               </div>
             </div>
+          </>
+        ) : (
+          /* ── Auto Trade ───────────────────────────────────────────────────── */
+          <>
+            <div className="flex items-center gap-2 mb-4">
+              <Bot className="w-4 h-4 text-accent-emerald" />
+              <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider">Auto Trade</h2>
+              <span className="ml-auto text-[10px] normal-case font-normal text-text-secondary/50">
+                System buys top assets · Exit = Target 1 · SL = System recommendation
+              </span>
+            </div>
 
-            {/* Trade parameters */}
-            <div className="space-y-4">
-              {selectedOpp && (
-                <>
-                  {/* Entry info */}
-                  <div className="rounded-lg bg-surface-secondary/50 border border-border-color/40 p-4 space-y-2">
-                    <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wide">Entry Details</h3>
-                    <div className="grid grid-cols-2 gap-y-2 text-sm">
-                      <span className="text-text-secondary text-xs">Entry Low</span>
-                      <span className="font-mono text-accent-amber text-xs text-right">${formatPrice(selectedOpp.entryExit.entryLow)}</span>
-                      <span className="text-text-secondary text-xs">Entry High</span>
-                      <span className="font-mono text-accent-amber text-xs text-right">${formatPrice(selectedOpp.entryExit.entryHigh)}</span>
-                      <span className="text-text-secondary text-xs">Avg Entry</span>
-                      <span className="font-mono text-text-primary text-xs text-right font-semibold">
-                        ${formatPrice((selectedOpp.entryExit.entryLow + selectedOpp.entryExit.entryHigh) / 2)}
-                      </span>
-                      <span className="text-text-secondary text-xs">Stop Loss</span>
-                      <span className="font-mono text-accent-red text-xs text-right">${formatPrice(selectedOpp.entryExit.stopLoss)}</span>
-                      <span className="text-text-secondary text-xs">Target 1 / 2 / 3</span>
-                      <span className="font-mono text-accent-emerald text-xs text-right">
-                        ${formatPrice(selectedOpp.entryExit.target1)} / ${formatPrice(selectedOpp.entryExit.target2)} / ${formatPrice(selectedOpp.entryExit.target3)}
-                      </span>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Left: config + action */}
+              <div className="space-y-4">
+                {/* Info banner */}
+                <div className="rounded-lg bg-accent-emerald/5 border border-accent-emerald/20 p-4 space-y-1.5">
+                  <div className="flex items-center gap-2 text-accent-emerald text-xs font-semibold">
+                    <Zap className="w-3.5 h-3.5" /> How Auto Trade works
+                  </div>
+                  <ul className="space-y-1 text-[11px] text-text-secondary">
+                    <li className="flex items-start gap-1.5"><ChevronRight className="w-3 h-3 mt-0.5 text-accent-emerald flex-shrink-0" /> Fetches the latest Opportunity Buy recommendations (4H timeframe)</li>
+                    <li className="flex items-start gap-1.5"><ChevronRight className="w-3 h-3 mt-0.5 text-accent-emerald flex-shrink-0" /> Automatically buys the top-ranked assets using your capital-per-trade setting</li>
+                    <li className="flex items-start gap-1.5"><ChevronRight className="w-3 h-3 mt-0.5 text-accent-emerald flex-shrink-0" /> Sets <span className="text-accent-emerald font-semibold">Exit = Target 1</span> (conservative exit point) for each asset</li>
+                    <li className="flex items-start gap-1.5"><ChevronRight className="w-3 h-3 mt-0.5 text-accent-emerald flex-shrink-0" /> Sets <span className="text-accent-red font-semibold">Stop Loss</span> exactly as recommended by the system</li>
+                  </ul>
+                </div>
+
+                {/* Max trades selector */}
+                <div>
+                  <label className="block text-xs text-text-secondary mb-1.5">
+                    Max trades to open <span className="text-text-secondary/50">(top-ranked by score)</span>
+                  </label>
+                  <div className="flex gap-2">
+                    {[1, 2, 3, 5].map(n => (
+                      <button
+                        key={n}
+                        onClick={() => setMaxAutoTrades(n)}
+                        className={`text-[11px] px-3 py-1.5 rounded-md border transition-all font-semibold ${
+                          maxAutoTrades === n
+                            ? 'bg-accent-emerald/20 border-accent-emerald/50 text-accent-emerald'
+                            : 'bg-surface-secondary/40 border-border-color/50 text-text-secondary hover:border-accent-emerald/30'
+                        }`}
+                      >
+                        {n}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-[11px] text-text-secondary/60 mt-1.5">
+                    Capital per trade: ${formatUSDT(capitalPerTrade)} USDT · Available: ${formatUSDT(availableCapital)} USDT
+                  </p>
+                </div>
+
+                {/* Execute button */}
+                <button
+                  onClick={() => executeAutoTrades(availableCapital, capitalPerTrade)}
+                  disabled={autoRunning || opportunities.length === 0}
+                  className="w-full py-3 rounded-xl bg-gradient-to-r from-accent-emerald to-accent-teal text-white font-bold text-sm hover:opacity-90 active:scale-95 transition-all shadow-lg shadow-accent-emerald/20 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {autoRunning ? (
+                    <><Square className="w-4 h-4 animate-pulse" /> Running Auto Trade…</>
+                  ) : (
+                    <><Play className="w-4 h-4" /> Execute Auto Trades</>
+                  )}
+                </button>
+
+                {/* Clear log */}
+                {autoLog.length > 0 && (
+                  <button
+                    onClick={() => setAutoLog([])}
+                    className="text-[11px] text-text-secondary/60 hover:text-text-secondary transition-all underline underline-offset-2"
+                  >
+                    Clear activity log
+                  </button>
+                )}
+              </div>
+
+              {/* Right: preview of what will be bought + activity log */}
+              <div className="space-y-4">
+                {/* Preview assets */}
+                {opportunities.length > 0 && (
+                  <div>
+                    <p className="text-xs text-text-secondary mb-2">
+                      Assets that will be auto-bought (top {Math.min(maxAutoTrades, opportunities.length)}):
+                    </p>
+                    <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
+                      {opportunities.slice(0, maxAutoTrades).map((opp, i) => {
+                        const entry = (opp.entryExit.entryLow + opp.entryExit.entryHigh) / 2
+                        const signalColor =
+                          opp.signalStrength === 'STRONG_BUY' ? 'text-accent-emerald border-accent-emerald/40 bg-accent-emerald/10' :
+                          opp.signalStrength === 'BUY'         ? 'text-accent-blue border-accent-blue/40 bg-accent-blue/10' :
+                                                                'text-accent-amber border-accent-amber/40 bg-accent-amber/10'
+                        return (
+                          <div key={opp.id} className="rounded-lg bg-surface-secondary/40 border border-border-color/40 px-3 py-2.5">
+                            <div className="flex items-center justify-between mb-1">
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-bold text-text-secondary/50">#{i + 1}</span>
+                                <span className="font-bold text-sm text-text-primary">{opp.asset.symbol}</span>
+                                <span className="text-xs text-text-secondary">{opp.asset.name}</span>
+                              </div>
+                              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${signalColor}`}>
+                                {opp.signalStrength.replace('_', ' ')}
+                              </span>
+                            </div>
+                            <div className="grid grid-cols-3 gap-2 text-[11px]">
+                              <span className="text-text-secondary">
+                                Entry: <span className="font-mono text-text-primary">${formatPrice(entry)}</span>
+                              </span>
+                              <span className="text-text-secondary">
+                                Exit (T1): <span className="font-mono text-accent-emerald">${formatPrice(opp.entryExit.target1)}</span>
+                              </span>
+                              <span className="text-text-secondary">
+                                SL: <span className="font-mono text-accent-red">${formatPrice(opp.entryExit.stopLoss)}</span>
+                              </span>
+                            </div>
+                          </div>
+                        )
+                      })}
                     </div>
                   </div>
+                )}
 
-                  {/* Exit point input */}
+                {/* Activity log */}
+                {autoLog.length > 0 && (
                   <div>
-                    <label className="block text-xs text-text-secondary mb-1.5">
-                      Exit Price <span className="text-text-secondary/50">(your target exit)</span>
-                    </label>
-                    <div className="relative">
-                      <Target className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary w-4 h-4" />
-                      <input
-                        type="number"
-                        step="any"
-                        value={exitPrice}
-                        onChange={e => setExitPrice(e.target.value)}
-                        className="w-full pl-9 pr-4 py-2.5 rounded-lg bg-surface-secondary/60 border border-border-color/60 text-text-primary text-sm font-mono focus:outline-none focus:border-accent-emerald/60 focus:ring-1 focus:ring-accent-emerald/30 transition-all"
-                      />
-                    </div>
-                    <div className="flex gap-2 mt-2">
-                      {[
-                        { label: 'T1', val: selectedOpp.entryExit.target1 },
-                        { label: 'T2', val: selectedOpp.entryExit.target2 },
-                        { label: 'T3', val: selectedOpp.entryExit.target3 },
-                        { label: 'SL', val: selectedOpp.entryExit.stopLoss },
-                      ].map(({ label, val }) => (
-                        <button
-                          key={label}
-                          onClick={() => setExitPrice(val.toFixed(selectedOpp.asset.price > 100 ? 2 : 4))}
-                          className={`text-[11px] px-2.5 py-1 rounded-md border transition-all ${
-                            label === 'SL'
-                              ? 'bg-accent-red/10 border-accent-red/40 text-accent-red hover:bg-accent-red/20'
-                              : 'bg-accent-emerald/10 border-accent-emerald/40 text-accent-emerald hover:bg-accent-emerald/20'
+                    <p className="text-xs text-text-secondary mb-2 flex items-center gap-1.5">
+                      <Activity className="w-3 h-3" /> Activity Log
+                    </p>
+                    <div className="space-y-1 max-h-48 overflow-y-auto pr-1">
+                      {autoLog.map(entry => (
+                        <div
+                          key={entry.id}
+                          className={`text-[11px] px-3 py-1.5 rounded-lg border flex items-start gap-2 ${
+                            entry.type === 'success' ? 'bg-accent-emerald/5 border-accent-emerald/20 text-accent-emerald' :
+                            entry.type === 'error'   ? 'bg-accent-red/5 border-accent-red/20 text-accent-red' :
+                            entry.type === 'skip'    ? 'bg-accent-amber/5 border-accent-amber/20 text-accent-amber' :
+                                                      'bg-surface-secondary/40 border-border-color/30 text-text-secondary'
                           }`}
                         >
-                          {label}
-                        </button>
+                          <span className="font-mono text-[10px] opacity-60 flex-shrink-0 mt-0.5">
+                            {entry.timestamp.toLocaleTimeString()}
+                          </span>
+                          <span>{entry.message}</span>
+                        </div>
                       ))}
                     </div>
                   </div>
-
-                  {/* Trade preview */}
-                  {(() => {
-                    const entry = (selectedOpp.entryExit.entryLow + selectedOpp.entryExit.entryHigh) / 2
-                    const exit = parseFloat(exitPrice)
-                    if (isNaN(exit) || exit <= 0 || entry <= 0) return null
-                    const qty = capitalPerTrade / entry
-                    const pnl = (exit - entry) * qty
-                    const pnlPct = ((exit - entry) / entry) * 100
-                    const isProfit = pnl >= 0
-                    return (
-                      <div className={`rounded-lg border p-3 ${isProfit ? 'bg-accent-emerald/5 border-accent-emerald/30' : 'bg-accent-red/5 border-accent-red/30'}`}>
-                        <div className="text-xs font-semibold text-text-secondary uppercase tracking-wide mb-2">Trade Preview</div>
-                        <div className="grid grid-cols-2 gap-y-1.5 text-xs">
-                          <span className="text-text-secondary">Capital Used</span>
-                          <span className="font-mono text-text-primary text-right">${formatUSDT(capitalPerTrade)}</span>
-                          <span className="text-text-secondary">Quantity</span>
-                          <span className="font-mono text-text-primary text-right">{qty.toFixed(6)} {selectedOpp.asset.symbol}</span>
-                          <span className="text-text-secondary">Est. P&L</span>
-                          <span className={`font-mono font-bold text-right ${isProfit ? 'text-accent-emerald' : 'text-accent-red'}`}>
-                            {isProfit ? '+' : ''}${formatUSDT(pnl)} ({formatPct(pnlPct)})
-                          </span>
-                        </div>
-                      </div>
-                    )
-                  })()}
-
-                  {execError && (
-                    <div className="flex items-center gap-2 text-accent-red text-xs bg-accent-red/10 border border-accent-red/30 rounded-lg px-3 py-2">
-                      <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" /> {execError}
-                    </div>
-                  )}
-
-                  <button
-                    onClick={executeBuy}
-                    className="w-full py-3 rounded-xl bg-gradient-to-r from-accent-emerald to-accent-teal text-white font-bold text-sm hover:opacity-90 active:scale-95 transition-all shadow-lg shadow-accent-emerald/20 flex items-center justify-center gap-2"
-                  >
-                    <Plus className="w-4 h-4" /> Execute Demo Trade
-                  </button>
-                </>
-              )}
+                )}
+              </div>
             </div>
-          </div>
+          </>
         )}
       </section>
 
@@ -609,6 +884,7 @@ export default function DemoAccountPage() {
             {trades.map(trade => {
               const isOpen = trade.status === 'open'
               const isWin = trade.status === 'correct'
+              const isAutoTrade = trade.tradeMode === 'auto'
               return (
                 <div
                   key={trade.id}
@@ -639,6 +915,11 @@ export default function DemoAccountPage() {
                           }`}>
                             {isOpen ? 'Open' : isWin ? '✓ Correct Prediction' : '✗ Failed Prediction'}
                           </span>
+                          {isAutoTrade && (
+                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full border text-accent-emerald border-accent-emerald/40 bg-accent-emerald/10 flex items-center gap-1">
+                              <Bot className="w-2.5 h-2.5" /> Auto
+                            </span>
+                          )}
                         </div>
                         <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-1.5">
                           <span className="text-[11px] text-text-secondary">
@@ -648,6 +929,16 @@ export default function DemoAccountPage() {
                             <span className="text-[11px] text-text-secondary">
                               Exit: <span className="font-mono text-text-primary">${formatPrice(trade.exitPrice)}</span>
                             </span>
+                          )}
+                          {isOpen && (
+                            <>
+                              <span className="text-[11px] text-text-secondary">
+                                Target: <span className="font-mono text-accent-emerald">${formatPrice(trade.targetExit)}</span>
+                              </span>
+                              <span className="text-[11px] text-text-secondary">
+                                SL: <span className="font-mono text-accent-red">${formatPrice(trade.stopLoss)}</span>
+                              </span>
+                            </>
                           )}
                           <span className="text-[11px] text-text-secondary">
                             Capital: <span className="font-mono text-text-primary">${formatUSDT(trade.capitalUsed)}</span>
