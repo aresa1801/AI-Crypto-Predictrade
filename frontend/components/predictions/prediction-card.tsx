@@ -1,9 +1,30 @@
 'use client'
 
 import { useState } from 'react'
+import type { ReactNode } from 'react'
 import { Prediction } from '@/lib/types'
-import { TrendingUp, TrendingDown } from 'lucide-react'
+import { TrendingUp, TrendingDown, Zap, Wind, RefreshCw, Minus } from 'lucide-react'
 import { useLivePrice } from '@/hooks/use-live-price'
+
+// Interpolate color between red (#EF4444) → amber (#F59E0B) → green (#22C55E)
+function interpolateProbColor(probUp: number): string {
+  const r1 = 239, g1 = 68,  b1 = 68   // red
+  const r2 = 245, g2 = 158, b2 = 11   // amber
+  const r3 = 34,  g3 = 197, b3 = 94   // green
+  let r, g, b
+  if (probUp <= 50) {
+    const t = probUp / 50
+    r = Math.round(r1 + (r2 - r1) * t)
+    g = Math.round(g1 + (g2 - g1) * t)
+    b = Math.round(b1 + (b2 - b1) * t)
+  } else {
+    const t = (probUp - 50) / 50
+    r = Math.round(r2 + (r3 - r2) * t)
+    g = Math.round(g2 + (g3 - g2) * t)
+    b = Math.round(b2 + (b3 - b2) * t)
+  }
+  return `rgb(${r}, ${g}, ${b})`
+}
 
 interface PredictionCardProps {
   prediction: Prediction
@@ -44,25 +65,53 @@ export function PredictionCard({ prediction }: PredictionCardProps) {
 
   // Determine market sentiment badges
   const getSentimentBadges = () => {
-    const badges = []
-    
+    const badges: { label: string; color: string; icon: ReactNode }[] = []
+
     if (direction === 'bearish') {
-      badges.push({ label: 'BEAR', color: 'bg-accent-red/30 text-accent-red border border-accent-red/50' })
+      badges.push({
+        label: 'BEAR',
+        color: 'bg-accent-red/20 text-accent-red border border-accent-red/60 shadow-[0_0_8px_rgba(239,68,68,0.25)]',
+        icon: <TrendingDown className="w-3 h-3" />,
+      })
     } else if (direction === 'bullish') {
-      badges.push({ label: 'BULL', color: 'bg-accent-emerald/30 text-accent-emerald border border-accent-emerald/50' })
+      badges.push({
+        label: 'BULL',
+        color: 'bg-accent-emerald/20 text-accent-emerald border border-accent-emerald/60 shadow-[0_0_8px_rgba(52,211,153,0.25)]',
+        icon: <TrendingUp className="w-3 h-3" />,
+      })
     } else {
-      badges.push({ label: 'NEUTRAL', color: 'bg-accent-amber/30 text-accent-amber border border-accent-amber/50' })
+      badges.push({
+        label: 'NEUTRAL',
+        color: 'bg-accent-amber/20 text-accent-amber border border-accent-amber/60',
+        icon: <Minus className="w-3 h-3" />,
+      })
     }
 
     // Second badge based on confidence
     if (confidence > 60 && confidence < 75) {
-      badges.push({ label: 'DRIFTING', color: 'bg-accent-amber/30 text-accent-amber border border-accent-amber/50' })
+      badges.push({
+        label: 'DRIFTING',
+        color: 'bg-accent-amber/20 text-accent-amber border border-accent-amber/60 shadow-[0_0_8px_rgba(245,158,11,0.2)]',
+        icon: <Wind className="w-3 h-3" />,
+      })
     } else if (confidence >= 75) {
-      badges.push({ label: 'STRONG', color: 'bg-accent-emerald/30 text-accent-emerald border border-accent-emerald/50' })
+      badges.push({
+        label: 'STRONG',
+        color: 'bg-accent-emerald/20 text-accent-emerald border border-accent-emerald/60 shadow-[0_0_8px_rgba(52,211,153,0.2)]',
+        icon: <Zap className="w-3 h-3" />,
+      })
     } else if (confidence >= 50) {
-      badges.push({ label: 'RETRAINED', color: 'bg-accent-cyan/30 text-accent-cyan border border-accent-cyan/50' })
+      badges.push({
+        label: 'RETRAINED',
+        color: 'bg-violet-500/20 text-violet-400 border border-violet-500/60 shadow-[0_0_8px_rgba(139,92,246,0.2)]',
+        icon: <RefreshCw className="w-3 h-3" />,
+      })
     } else {
-      badges.push({ label: 'STABLE', color: 'bg-accent-emerald/30 text-accent-emerald border border-accent-emerald/50' })
+      badges.push({
+        label: 'STABLE',
+        color: 'bg-accent-cyan/20 text-accent-cyan border border-accent-cyan/60 shadow-[0_0_8px_rgba(6,182,212,0.2)]',
+        icon: <Minus className="w-3 h-3" />,
+      })
     }
 
     return badges
@@ -91,20 +140,28 @@ export function PredictionCard({ prediction }: PredictionCardProps) {
           </h3>
           <p className="text-[10px] text-text-secondary mt-0.5">{asset.name}</p>
         </div>
-        <div className="flex gap-0.5">
-          {(['1h', '4h', '24h'] as const).map((tf) => (
-            <button
-              key={tf}
-              onClick={() => setSelectedTimeframe(tf)}
-              className={`px-1.5 py-0.5 text-[10px] rounded transition-all ${
-                selectedTimeframe === tf
-                  ? 'bg-accent-emerald/30 text-accent-emerald'
-                  : 'text-text-secondary hover:text-text-primary hover:bg-surface-secondary/50'
-              }`}
-            >
-              {tf.toUpperCase()}
-            </button>
-          ))}
+        <div className="flex gap-0.5 bg-surface-secondary/40 rounded-lg p-0.5 border border-border-color/20">
+          {(['1h', '4h', '24h'] as const).map((tf) => {
+            const tfColors: Record<string, string> = {
+              '1h': 'text-accent-cyan shadow-[0_0_6px_rgba(6,182,212,0.4)] bg-accent-cyan/20 border-accent-cyan/40',
+              '4h': 'text-accent-amber shadow-[0_0_6px_rgba(245,158,11,0.4)] bg-accent-amber/20 border-accent-amber/40',
+              '24h': 'text-accent-emerald shadow-[0_0_6px_rgba(52,211,153,0.4)] bg-accent-emerald/20 border-accent-emerald/40',
+            }
+            const isActive = selectedTimeframe === tf
+            return (
+              <button
+                key={tf}
+                onClick={() => setSelectedTimeframe(tf)}
+                className={`px-2 py-0.5 text-[10px] font-bold rounded-md transition-all border ${
+                  isActive
+                    ? `${tfColors[tf]} border`
+                    : 'text-text-secondary hover:text-text-primary hover:bg-surface-secondary/60 border-transparent'
+                }`}
+              >
+                {tf.toUpperCase()}
+              </button>
+            )
+          })}
         </div>
       </div>
 
@@ -146,20 +203,25 @@ export function PredictionCard({ prediction }: PredictionCardProps) {
       <div className="mb-3">
         <div className="flex items-center justify-between mb-1.5">
           <span className="text-[10px] text-text-secondary uppercase tracking-wide">Prob Up</span>
-          <span className={`text-xl font-bold ${
-            probUp >= 50 ? 'text-accent-emerald' : 'text-accent-red'
-          }`}>
+          <span
+            className="text-xl font-bold"
+            style={{ color: interpolateProbColor(probUp) }}
+          >
             {Math.round(probUp)}%
           </span>
         </div>
-        <div className="w-full h-1.5 bg-surface-secondary/50 rounded-full overflow-hidden">
-          <div 
-            className={`h-full transition-all duration-500 ${
-              probUp >= 70 ? 'bg-accent-emerald' :
-              probUp >= 50 ? 'bg-accent-amber' :
-              'bg-accent-red'
-            }`}
-            style={{ width: `${probUp}%` }}
+        {/* Gradient bar: full red→amber→green gradient, masked from probUp% to 100% */}
+        <div className="relative w-full h-2 rounded-full overflow-hidden bg-surface-secondary/50">
+          <div
+            className="absolute inset-0 rounded-full"
+            style={{ background: 'linear-gradient(to right, #EF4444 0%, #F59E0B 50%, #22C55E 100%)' }}
+          />
+          <div
+            className="absolute top-0 right-0 h-full rounded-r-full"
+            style={{
+              width: `${100 - probUp}%`,
+              background: 'rgba(15, 23, 42, 0.75)',
+            }}
           />
         </div>
       </div>
@@ -181,8 +243,9 @@ export function PredictionCard({ prediction }: PredictionCardProps) {
         {sentimentBadges.map((badge, index) => (
           <span
             key={index}
-            className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${badge.color}`}
+            className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${badge.color}`}
           >
+            {badge.icon}
             {badge.label}
           </span>
         ))}
