@@ -3,11 +3,12 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Menu, X, TrendingUp, Calculator, RotateCw, Settings, Home, Sparkles } from 'lucide-react'
+import { Menu, X, TrendingUp, Calculator, RotateCw, Settings, Home, Sparkles, ShoppingCart } from 'lucide-react'
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: Home, gradient: 'from-accent-purple to-accent-pink' },
   { href: '/predictions', label: 'AI Signals', icon: TrendingUp, gradient: 'from-accent-blue to-accent-cyan' },
+  { href: '/opportunity-buy', label: 'Opportunity Buy', icon: ShoppingCart, gradient: 'from-accent-emerald to-accent-teal' },
   { href: '/risk', label: 'Risk Analysis', icon: Calculator, gradient: 'from-accent-indigo to-accent-purple' },
   { href: '/backtest', label: 'Backtest', icon: RotateCw, gradient: 'from-accent-cyan to-accent-teal' },
   { href: '/settings', label: 'Settings', icon: Settings, gradient: 'from-accent-amber to-accent-orange' },
