@@ -63,6 +63,8 @@ function formatPct(n: number) {
   return (n >= 0 ? '+' : '') + n.toFixed(2) + '%'
 }
 
+const AUTO_TRADE_POLL_MS = 5 * 60 * 1000 // 5 minutes between scan cycles
+
 // ---------------------------------------------------------------------------
 // Sub-components
 // ---------------------------------------------------------------------------
@@ -154,9 +156,16 @@ export default function DemoAccountPage() {
   const [autoRunning, setAutoRunning] = useState(false)
   const [maxAutoTrades, setMaxAutoTrades] = useState(3)
   const [autoLog, setAutoLog] = useState<AutoTradeLogEntry[]>([])
+  const [nextScanAt, setNextScanAt] = useState<Date | null>(null)
 
   // Debounce timer ref for capital settings persistence
   const settingsSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Interval ref for Auto Trade bot
+  const autoIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  // Live ref so interval callbacks always see the latest state values
+  const liveRef = useRef({ trades: [] as DemoTrade[], availableCapital: 0, capitalPerTrade: 0, maxAutoTrades: 3 })
 
   // ---------------------------------------------------------------------------
   // Load persisted data from Supabase on mount
@@ -246,6 +255,17 @@ export default function DemoAccountPage() {
   useEffect(() => {
     loadOpportunities()
   }, [loadOpportunities])
+
+  // Keep liveRef in sync with the latest derived values so the interval
+  // callback never captures a stale closure.
+  useEffect(() => {
+    liveRef.current = { trades, availableCapital, capitalPerTrade, maxAutoTrades }
+  }, [trades, availableCapital, capitalPerTrade, maxAutoTrades])
+
+  // Clear the polling interval when the component unmounts.
+  useEffect(() => {
+    return () => { if (autoIntervalRef.current) clearInterval(autoIntervalRef.current) }
+  }, [])
 
   // When selected opportunity changes, pre-fill exit price
   useEffect(() => {
@@ -341,41 +361,69 @@ export default function DemoAccountPage() {
     deleteDemoTrade(id)
   }
 
-  async function executeAutoTrades(currentAvailableCapital: number, perTrade: number) {
-    if (autoRunning) return
-    setAutoRunning(true)
+  // ---------------------------------------------------------------------------
+  // Auto Trade — continuous bot
+  // ---------------------------------------------------------------------------
 
-    const addLog = (message: string, type: AutoTradeLogEntry['type']) => {
-      const entry: AutoTradeLogEntry = {
-        id: `log-${Date.now()}-${Math.random()}`,
-        timestamp: new Date(),
-        message,
-        type,
-      }
-      setAutoLog(prev => [entry, ...prev])
-      saveAutoLog(entry)
+  function addAutoLog(message: string, type: AutoTradeLogEntry['type']) {
+    const entry: AutoTradeLogEntry = {
+      id: `log-${Date.now()}-${Math.random()}`,
+      timestamp: new Date(),
+      message,
+      type,
     }
+    setAutoLog(prev => [entry, ...prev])
+    saveAutoLog(entry)
+  }
 
-    addLog('Auto Trade engine started — fetching latest Opportunity Buy signals…', 'info')
+  async function runAutoTradeCycle() {
+    const {
+      trades: currentTrades,
+      availableCapital: currentCap,
+      capitalPerTrade: perTrade,
+      maxAutoTrades: maxTrades,
+    } = liveRef.current
 
-    let freshOpportunities = opportunities
+    addAutoLog('🤖 Scanning for STRONG_BUY signals…', 'info')
+
+    let freshOpportunities: OpportunityAsset[] = []
     try {
       const data = await fetchOpportunityBuys(true, '4h')
       freshOpportunities = data.opportunities
-      addLog(`Fetched ${freshOpportunities.length} opportunities from Opportunity Buy engine.`, 'info')
+      addAutoLog(`Fetched ${freshOpportunities.length} opportunities from engine.`, 'info')
     } catch {
-      addLog('Could not refresh opportunities — using cached data.', 'info')
+      addAutoLog('Failed to fetch opportunities — will retry next cycle.', 'error')
+      return
     }
 
-    const candidates = freshOpportunities.slice(0, maxAutoTrades)
-    let remainingCapital = currentAvailableCapital
-    let executed = 0
+    // Only act on the strongest signal
+    const strongBuys = freshOpportunities.filter(opp => opp.signalStrength === 'STRONG_BUY')
+    if (strongBuys.length === 0) {
+      addAutoLog('No STRONG_BUY signals found — waiting for next scan.', 'skip')
+      return
+    }
 
+    // Skip assets already held in an open position to avoid duplication
+    const openSymbols = new Set(currentTrades.filter(t => t.status === 'open').map(t => t.symbol))
+    const candidates = strongBuys.filter(opp => !openSymbols.has(opp.asset.symbol)).slice(0, maxTrades)
+
+    if (candidates.length === 0) {
+      addAutoLog(
+        `${strongBuys.length} STRONG_BUY signal(s) found but already holding open positions — skipping.`,
+        'skip',
+      )
+      return
+    }
+
+    let remainingCapital = currentCap
     const newTrades: DemoTrade[] = []
 
     for (const opp of candidates) {
       if (remainingCapital < perTrade) {
-        addLog(`Skipped ${opp.asset.symbol}: insufficient available capital ($${formatUSDT(remainingCapital)} < $${formatUSDT(perTrade)}).`, 'skip')
+        addAutoLog(
+          `Skipped ${opp.asset.symbol}: insufficient available capital ($${formatUSDT(remainingCapital)} < $${formatUSDT(perTrade)}).`,
+          'skip',
+        )
         continue
       }
 
@@ -404,10 +452,9 @@ export default function DemoAccountPage() {
 
       newTrades.push(trade)
       remainingCapital -= perTrade
-      executed++
 
-      addLog(
-        `✅ Auto-bought ${opp.asset.symbol} @ $${formatPrice(entry)} | Exit (T1): $${formatPrice(targetExit)} | SL: $${formatPrice(sl)} | Capital: $${formatUSDT(perTrade)}`,
+      addAutoLog(
+        `✅ Auto-bought ${opp.asset.symbol} @ $${formatPrice(entry)} | T1: $${formatPrice(targetExit)} | SL: $${formatPrice(sl)} | Capital: $${formatUSDT(perTrade)}`,
         'success',
       )
     }
@@ -415,15 +462,35 @@ export default function DemoAccountPage() {
     if (newTrades.length > 0) {
       setTrades(prev => [...newTrades].reverse().concat(prev))
       await Promise.all(newTrades.map(t => saveDemoTrade(t)))
+      addAutoLog(`${newTrades.length} trade(s) opened automatically.`, 'info')
     }
+  }
 
-    if (executed === 0) {
-      addLog('No trades were executed. Check capital settings or available opportunities.', 'error')
-    } else {
-      addLog(`Auto Trade complete — ${executed} trade(s) opened. Exit set at Target 1; Stop Loss from system recommendation.`, 'info')
+  function startAutoTrade() {
+    if (autoRunning) return
+    // Sync liveRef with current values before the first cycle runs
+    liveRef.current = { trades, availableCapital, capitalPerTrade, maxAutoTrades }
+    setAutoRunning(true)
+    const nextTime = new Date(Date.now() + AUTO_TRADE_POLL_MS)
+    setNextScanAt(nextTime)
+    addAutoLog('🤖 Auto Trade bot STARTED — scanning every 5 minutes for STRONG_BUY opportunities.', 'info')
+    // Run first cycle immediately, then schedule recurring scans
+    runAutoTradeCycle()
+    autoIntervalRef.current = setInterval(() => {
+      const next = new Date(Date.now() + AUTO_TRADE_POLL_MS)
+      setNextScanAt(next)
+      runAutoTradeCycle()
+    }, AUTO_TRADE_POLL_MS)
+  }
+
+  function stopAutoTrade() {
+    if (autoIntervalRef.current) {
+      clearInterval(autoIntervalRef.current)
+      autoIntervalRef.current = null
     }
-
     setAutoRunning(false)
+    setNextScanAt(null)
+    addAutoLog('🛑 Auto Trade bot STOPPED by user.', 'info')
   }
 
   // ---------------------------------------------------------------------------
@@ -776,8 +843,13 @@ export default function DemoAccountPage() {
             <div className="flex items-center gap-2 mb-4">
               <Bot className="w-4 h-4 text-accent-emerald" />
               <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider">Auto Trade</h2>
+              {autoRunning && (
+                <span className="flex items-center gap-1.5 ml-2 text-[10px] font-semibold text-accent-emerald">
+                  <span className="w-2 h-2 rounded-full bg-accent-emerald animate-pulse" /> BOT ACTIVE
+                </span>
+              )}
               <span className="ml-auto text-[10px] normal-case font-normal text-text-secondary/50">
-                System buys top assets · Exit = Target 1 · SL = System recommendation
+                STRONG_BUY only · Exit = T1 · SL = System
               </span>
             </div>
 
@@ -790,10 +862,11 @@ export default function DemoAccountPage() {
                     <Zap className="w-3.5 h-3.5" /> How Auto Trade works
                   </div>
                   <ul className="space-y-1 text-[11px] text-text-secondary">
-                    <li className="flex items-start gap-1.5"><ChevronRight className="w-3 h-3 mt-0.5 text-accent-emerald flex-shrink-0" /> Fetches the latest Opportunity Buy recommendations (4H timeframe)</li>
-                    <li className="flex items-start gap-1.5"><ChevronRight className="w-3 h-3 mt-0.5 text-accent-emerald flex-shrink-0" /> Automatically buys the top-ranked assets using your capital-per-trade setting</li>
-                    <li className="flex items-start gap-1.5"><ChevronRight className="w-3 h-3 mt-0.5 text-accent-emerald flex-shrink-0" /> Sets <span className="text-accent-emerald font-semibold">Exit = Target 1</span> (conservative exit point) for each asset</li>
-                    <li className="flex items-start gap-1.5"><ChevronRight className="w-3 h-3 mt-0.5 text-accent-emerald flex-shrink-0" /> Sets <span className="text-accent-red font-semibold">Stop Loss</span> exactly as recommended by the system</li>
+                    <li className="flex items-start gap-1.5"><ChevronRight className="w-3 h-3 mt-0.5 text-accent-emerald flex-shrink-0" /> Runs continuously — scanning for <span className="text-accent-emerald font-semibold">STRONG_BUY</span> signals every 5 minutes</li>
+                    <li className="flex items-start gap-1.5"><ChevronRight className="w-3 h-3 mt-0.5 text-accent-emerald flex-shrink-0" /> Only buys when a strong signal appears — skips BUY and ACCUMULATE signals</li>
+                    <li className="flex items-start gap-1.5"><ChevronRight className="w-3 h-3 mt-0.5 text-accent-emerald flex-shrink-0" /> Skips assets already held in open trades to avoid duplicate positions</li>
+                    <li className="flex items-start gap-1.5"><ChevronRight className="w-3 h-3 mt-0.5 text-accent-emerald flex-shrink-0" /> Sets <span className="text-accent-emerald font-semibold">Exit = Target 1</span> and <span className="text-accent-red font-semibold">Stop Loss</span> automatically from system data</li>
+                    <li className="flex items-start gap-1.5"><ChevronRight className="w-3 h-3 mt-0.5 text-accent-emerald flex-shrink-0" /> Stops only when you click <span className="font-semibold">Stop Auto Trade</span></li>
                   </ul>
                 </div>
 
@@ -822,18 +895,31 @@ export default function DemoAccountPage() {
                   </p>
                 </div>
 
-                {/* Execute button */}
-                <button
-                  onClick={() => executeAutoTrades(availableCapital, capitalPerTrade)}
-                  disabled={autoRunning || opportunities.length === 0}
-                  className="w-full py-3 rounded-xl bg-gradient-to-r from-accent-emerald to-accent-teal text-white font-bold text-sm hover:opacity-90 active:scale-95 transition-all shadow-lg shadow-accent-emerald/20 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {autoRunning ? (
-                    <><Square className="w-4 h-4 animate-pulse" /> Running Auto Trade…</>
-                  ) : (
-                    <><Play className="w-4 h-4" /> Execute Auto Trades</>
-                  )}
-                </button>
+                {/* Start / Stop Auto Trade button */}
+                {autoRunning ? (
+                  <button
+                    onClick={stopAutoTrade}
+                    className="w-full py-3 rounded-xl bg-gradient-to-r from-accent-red to-accent-orange text-white font-bold text-sm hover:opacity-90 active:scale-95 transition-all shadow-lg shadow-accent-red/20 flex items-center justify-center gap-2"
+                  >
+                    <Square className="w-4 h-4" /> Stop Auto Trade
+                  </button>
+                ) : (
+                  <button
+                    onClick={startAutoTrade}
+                    disabled={opportunities.length === 0}
+                    className="w-full py-3 rounded-xl bg-gradient-to-r from-accent-emerald to-accent-teal text-white font-bold text-sm hover:opacity-90 active:scale-95 transition-all shadow-lg shadow-accent-emerald/20 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Play className="w-4 h-4" /> Start Auto Trade
+                  </button>
+                )}
+
+                {/* Running indicator */}
+                {autoRunning && nextScanAt && (
+                  <div className="flex items-center gap-2 text-xs text-text-secondary bg-surface-secondary/40 border border-border-color/40 rounded-lg px-3 py-2">
+                    <span className="w-2 h-2 rounded-full bg-accent-emerald animate-pulse flex-shrink-0" />
+                    Bot running · Next scan at <span className="font-mono text-text-primary">{nextScanAt.toLocaleTimeString()}</span>
+                  </div>
+                )}
 
                 {/* Clear log */}
                 {autoLog.length > 0 && (
@@ -846,50 +932,71 @@ export default function DemoAccountPage() {
                 )}
               </div>
 
-              {/* Right: preview of what will be bought + activity log */}
+              {/* Right: preview of STRONG_BUY candidates + activity log */}
               <div className="space-y-4">
                 {/* Preview assets */}
-                {opportunities.length > 0 && (
-                  <div>
-                    <p className="text-xs text-text-secondary mb-2">
-                      Assets that will be auto-bought (top {Math.min(maxAutoTrades, opportunities.length)}):
-                    </p>
-                    <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
-                      {opportunities.slice(0, maxAutoTrades).map((opp, i) => {
-                        const entry = (opp.entryExit.entryLow + opp.entryExit.entryHigh) / 2
-                        const signalColor =
-                          opp.signalStrength === 'STRONG_BUY' ? 'text-accent-emerald border-accent-emerald/40 bg-accent-emerald/10' :
-                          opp.signalStrength === 'BUY'         ? 'text-accent-blue border-accent-blue/40 bg-accent-blue/10' :
-                                                                'text-accent-amber border-accent-amber/40 bg-accent-amber/10'
-                        return (
-                          <div key={opp.id} className="rounded-lg bg-surface-secondary/40 border border-border-color/40 px-3 py-2.5">
-                            <div className="flex items-center justify-between mb-1">
-                              <div className="flex items-center gap-2">
-                                <span className="text-[10px] font-bold text-text-secondary/50">#{i + 1}</span>
-                                <span className="font-bold text-sm text-text-primary">{opp.asset.symbol}</span>
-                                <span className="text-xs text-text-secondary">{opp.asset.name}</span>
+                {(() => {
+                  const strongBuyOpps = opportunities.filter(opp => opp.signalStrength === 'STRONG_BUY').slice(0, maxAutoTrades)
+                  const openSymbols = new Set(openTrades.map(t => t.symbol))
+                  return strongBuyOpps.length > 0 ? (
+                    <div>
+                      <p className="text-xs text-text-secondary mb-2">
+                        STRONG_BUY assets eligible for auto-trade (top {Math.min(maxAutoTrades, strongBuyOpps.length)}):
+                      </p>
+                      <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
+                        {strongBuyOpps.map((opp, i) => {
+                          const entry = (opp.entryExit.entryLow + opp.entryExit.entryHigh) / 2
+                          const alreadyOpen = openSymbols.has(opp.asset.symbol)
+                          return (
+                            <div
+                              key={opp.id}
+                              className={`rounded-lg border px-3 py-2.5 transition-opacity ${
+                                alreadyOpen
+                                  ? 'bg-surface-secondary/20 border-border-color/20 opacity-50'
+                                  : 'bg-surface-secondary/40 border-border-color/40'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between mb-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[10px] font-bold text-text-secondary/50">#{i + 1}</span>
+                                  <span className="font-bold text-sm text-text-primary">{opp.asset.symbol}</span>
+                                  <span className="text-xs text-text-secondary">{opp.asset.name}</span>
+                                </div>
+                                {alreadyOpen ? (
+                                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full border text-text-secondary border-border-color/40 bg-surface-secondary/40">
+                                    Already open
+                                  </span>
+                                ) : (
+                                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full border text-accent-emerald border-accent-emerald/40 bg-accent-emerald/10">
+                                    STRONG BUY
+                                  </span>
+                                )}
                               </div>
-                              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${signalColor}`}>
-                                {opp.signalStrength.replace('_', ' ')}
-                              </span>
+                              <div className="grid grid-cols-3 gap-2 text-[11px]">
+                                <span className="text-text-secondary">
+                                  Entry: <span className="font-mono text-text-primary">${formatPrice(entry)}</span>
+                                </span>
+                                <span className="text-text-secondary">
+                                  T1: <span className="font-mono text-accent-emerald">${formatPrice(opp.entryExit.target1)}</span>
+                                </span>
+                                <span className="text-text-secondary">
+                                  SL: <span className="font-mono text-accent-red">${formatPrice(opp.entryExit.stopLoss)}</span>
+                                </span>
+                              </div>
                             </div>
-                            <div className="grid grid-cols-3 gap-2 text-[11px]">
-                              <span className="text-text-secondary">
-                                Entry: <span className="font-mono text-text-primary">${formatPrice(entry)}</span>
-                              </span>
-                              <span className="text-text-secondary">
-                                Exit (T1): <span className="font-mono text-accent-emerald">${formatPrice(opp.entryExit.target1)}</span>
-                              </span>
-                              <span className="text-text-secondary">
-                                SL: <span className="font-mono text-accent-red">${formatPrice(opp.entryExit.stopLoss)}</span>
-                              </span>
-                            </div>
-                          </div>
-                        )
-                      })}
+                          )
+                        })}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  ) : (
+                    <div className="rounded-lg bg-surface-secondary/30 border border-border-color/40 p-4 text-center">
+                      <p className="text-xs text-text-secondary">No STRONG_BUY signals currently detected.</p>
+                      <p className="text-[11px] text-text-secondary/60 mt-1">
+                        {autoRunning ? 'Bot will buy automatically when a strong signal appears.' : 'Start the bot to monitor and buy automatically.'}
+                      </p>
+                    </div>
+                  )
+                })()}
 
                 {/* Activity log */}
                 {autoLog.length > 0 && (
