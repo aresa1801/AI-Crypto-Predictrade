@@ -6,12 +6,12 @@ import { TrendingUp, Calculator, RotateCw, Settings, Home, Activity, ChevronLeft
 import { useSidebar } from '@/contexts/sidebar-context'
 
 const navItems = [
-  { href: '/dashboard',       label: 'Dashboard',        icon: Home,       accent: 'accent-blue'    },
-  { href: '/predictions',     label: 'AI Signals',       icon: TrendingUp, accent: 'accent-cyan'    },
-  { href: '/opportunity-buy', label: 'Opportunity Buy',  icon: ShoppingCart,accent: 'accent-emerald' },
-  { href: '/risk',            label: 'Risk Analysis',    icon: Calculator, accent: 'accent-amber'   },
-  { href: '/backtest',        label: 'Backtest',         icon: RotateCw,   accent: 'accent-purple'  },
-  { href: '/settings',        label: 'Settings',         icon: Settings,   accent: 'accent-teal'    },
+  { href: '/dashboard',       label: 'Dashboard',        icon: Home,        dotColor: 'bg-accent-blue',    iconColor: 'text-accent-blue',    indicatorColor: 'bg-accent-blue'    },
+  { href: '/predictions',     label: 'AI Signals',       icon: TrendingUp,  dotColor: 'bg-accent-cyan',    iconColor: 'text-accent-cyan',    indicatorColor: 'bg-accent-cyan'    },
+  { href: '/opportunity-buy', label: 'Opportunity Buy',  icon: ShoppingCart, dotColor: 'bg-accent-emerald', iconColor: 'text-accent-emerald', indicatorColor: 'bg-accent-emerald' },
+  { href: '/risk',            label: 'Risk Analysis',    icon: Calculator,  dotColor: 'bg-accent-amber',   iconColor: 'text-accent-amber',   indicatorColor: 'bg-accent-amber'   },
+  { href: '/backtest',        label: 'Backtest',         icon: RotateCw,    dotColor: 'bg-accent-purple',  iconColor: 'text-accent-purple',  indicatorColor: 'bg-accent-purple'  },
+  { href: '/settings',        label: 'Settings',         icon: Settings,    dotColor: 'bg-accent-teal',    iconColor: 'text-accent-teal',    indicatorColor: 'bg-accent-teal'    },
 ]
 
 export function Sidebar() {
@@ -57,11 +57,11 @@ export function Sidebar() {
             >
               {/* Active left-edge indicator */}
               {isActive && (
-                <span className={`absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-${item.accent}`} />
+                <span className={`absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full ${item.indicatorColor}`} />
               )}
 
               <Icon className={`w-[18px] h-[18px] flex-shrink-0 transition-colors duration-200 ${
-                isActive ? `text-${item.accent}` : 'text-text-secondary group-hover:text-text-primary'
+                isActive ? item.iconColor : 'text-text-secondary group-hover:text-text-primary'
               }`} />
 
               {!isCollapsed && (
@@ -69,7 +69,7 @@ export function Sidebar() {
               )}
 
               {!isCollapsed && isActive && (
-                <span className={`w-1.5 h-1.5 rounded-full bg-${item.accent} opacity-80`} />
+                <span className={`w-1.5 h-1.5 rounded-full ${item.dotColor} opacity-80`} />
               )}
             </Link>
           )

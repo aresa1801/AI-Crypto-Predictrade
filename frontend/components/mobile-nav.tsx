@@ -6,12 +6,12 @@ import { usePathname } from 'next/navigation'
 import { Menu, X, TrendingUp, Calculator, RotateCw, Settings, Home, Zap, ShoppingCart } from 'lucide-react'
 
 const navItems = [
-  { href: '/dashboard',       label: 'Dashboard',       icon: Home,        accent: 'text-accent-blue'    },
-  { href: '/predictions',     label: 'AI Signals',      icon: TrendingUp,  accent: 'text-accent-cyan'    },
-  { href: '/opportunity-buy', label: 'Opportunity Buy', icon: ShoppingCart, accent: 'text-accent-emerald' },
-  { href: '/risk',            label: 'Risk Analysis',   icon: Calculator,  accent: 'text-accent-amber'   },
-  { href: '/backtest',        label: 'Backtest',        icon: RotateCw,    accent: 'text-accent-purple'  },
-  { href: '/settings',        label: 'Settings',        icon: Settings,    accent: 'text-accent-teal'    },
+  { href: '/dashboard',       label: 'Dashboard',       icon: Home,        iconColor: 'text-accent-blue',    indicatorColor: 'bg-accent-blue'    },
+  { href: '/predictions',     label: 'AI Signals',      icon: TrendingUp,  iconColor: 'text-accent-cyan',    indicatorColor: 'bg-accent-cyan'    },
+  { href: '/opportunity-buy', label: 'Opportunity Buy', icon: ShoppingCart, iconColor: 'text-accent-emerald', indicatorColor: 'bg-accent-emerald' },
+  { href: '/risk',            label: 'Risk Analysis',   icon: Calculator,  iconColor: 'text-accent-amber',   indicatorColor: 'bg-accent-amber'   },
+  { href: '/backtest',        label: 'Backtest',        icon: RotateCw,    iconColor: 'text-accent-purple',  indicatorColor: 'bg-accent-purple'  },
+  { href: '/settings',        label: 'Settings',        icon: Settings,    iconColor: 'text-accent-teal',    indicatorColor: 'bg-accent-teal'    },
 ]
 
 export function MobileNav() {
@@ -68,9 +68,9 @@ export function MobileNav() {
                     }`}
                   >
                     {isActive && (
-                      <span className={`absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-accent-blue`} />
+                      <span className={`absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full ${item.indicatorColor}`} />
                     )}
-                    <Icon className={`w-4.5 h-4.5 flex-shrink-0 ${isActive ? item.accent : ''}`} />
+                    <Icon className={`w-4.5 h-4.5 flex-shrink-0 ${isActive ? item.iconColor : ''}`} />
                     <span>{item.label}</span>
                   </Link>
                 )

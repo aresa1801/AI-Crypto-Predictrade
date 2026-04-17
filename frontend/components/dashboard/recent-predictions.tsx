@@ -97,7 +97,7 @@ function RecentPredictionsContent() {
           <Clock className="w-5 h-5 text-white" />
         </div>
         <h3 className="text-base lg:text-lg font-semibold gradient-text">Recent Predictions</h3>
-        <div className="ml-auto flex items-center gap-2 flex-shrink-0">
+        <div className="ml-auto flex items-center gap-2">
           {state.stale && (
             <span className="flex items-center gap-1 text-xs text-accent-amber px-2 py-0.5 rounded bg-accent-amber/10 border border-accent-amber/30">
               <AlertTriangle className="w-3 h-3" />
