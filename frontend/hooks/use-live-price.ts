@@ -38,8 +38,7 @@ export function useLivePrice(coinId: string, initialPrice: number, initialChange
 
         if (!response.ok) {
           console.warn(`CoinGecko API error for ${coinId}: ${response.status}`)
-          // Fall back to simulated updates on API error
-          simulatePriceUpdate()
+          setData(prev => ({ ...prev, isUpdating: false }))
           return
         }
 
@@ -47,7 +46,7 @@ export function useLivePrice(coinId: string, initialPrice: number, initialChange
         
         if (isMounted && result[coinId]) {
           const newPrice = result[coinId].usd
-          const newChange = result[coinId].usd_24h_change || data.change24h
+          const newChange = result[coinId].usd_24h_change ?? data.change24h
 
           // Determine price direction for animation
           if (newPrice > prevPriceRef.current) {
@@ -66,45 +65,20 @@ export function useLivePrice(coinId: string, initialPrice: number, initialChange
 
           // Clear direction after animation
           setTimeout(() => setPriceDirection(null), 500)
+        } else if (isMounted) {
+          setData(prev => ({ ...prev, isUpdating: false }))
         }
       } catch (error) {
         console.warn(`Error fetching live price for ${coinId}:`, error)
-        // Fall back to simulated updates on error
-        simulatePriceUpdate()
+        if (isMounted) setData(prev => ({ ...prev, isUpdating: false }))
       }
-    }
-
-    const simulatePriceUpdate = () => {
-      if (!isMounted) return
-
-      // Simulate realistic price movement (±0.3% random fluctuation)
-      const fluctuation = (Math.random() - 0.5) * 0.006
-      const newPrice = data.price * (1 + fluctuation)
-
-      // Determine price direction
-      if (newPrice > prevPriceRef.current) {
-        setPriceDirection('up')
-      } else if (newPrice < prevPriceRef.current) {
-        setPriceDirection('down')
-      }
-
-      setData(prev => ({
-        price: newPrice,
-        change24h: prev.change24h + (Math.random() - 0.5) * 0.15,
-        isUpdating: false,
-      }))
-
-      prevPriceRef.current = newPrice
-      setTimeout(() => setPriceDirection(null), 500)
     }
 
     // Initial fetch
     fetchLivePrice()
 
-    // Update every 20 seconds (CoinGecko free tier rate limit friendly)
-    const interval = setInterval(() => {
-      fetchLivePrice()
-    }, 20000)
+    // Update every 30 seconds (CoinGecko free tier rate limit friendly)
+    const interval = setInterval(fetchLivePrice, 30_000)
 
     return () => {
       isMounted = false
@@ -117,3 +91,4 @@ export function useLivePrice(coinId: string, initialPrice: number, initialChange
     priceDirection,
   }
 }
+

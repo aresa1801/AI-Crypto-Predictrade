@@ -69,7 +69,7 @@ interface CexConnection {
 
 function createConnection(): CexConnection {
   return {
-    id: Math.random().toString(36).slice(2),
+    id: nextId(),
     cexId: '',
     apiKey: '',
     apiSecret: '',
@@ -82,21 +82,16 @@ function createConnection(): CexConnection {
   }
 }
 
-// ─── Mock portfolio generator ─────────────────────────────────────────────────
+// ─── ID generator ────────────────────────────────────────────────────────────
 
-function mockPortfolio(cexId: string) {
-  const cexIdHash = cexId.charCodeAt(0)
-  const totalUsdt = Math.round((cexIdHash * 1234.56) % 50000 + 1000)
-  return {
-    totalUsdt,
-    assets: [
-      { symbol: 'USDT', usdt: Math.round(totalUsdt * 0.35) },
-      { symbol: 'BTC', usdt: Math.round(totalUsdt * 0.40) },
-      { symbol: 'ETH', usdt: Math.round(totalUsdt * 0.18) },
-      { symbol: 'Others', usdt: Math.round(totalUsdt * 0.07) },
-    ],
+function nextId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
   }
+  // Fallback for environments without crypto.randomUUID
+  return `conn-${Date.now()}-${Math.floor(Math.random() * 1e9)}`
 }
+
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -558,16 +553,16 @@ export function CexApiSettings() {
 
     updateConnection(id, { status: 'testing', errorMessage: undefined })
 
-    // Simulate API test (1.5s)
+    // Validate API key format (minimum length check – real validation requires a backend)
     await new Promise(r => setTimeout(r, 1500))
 
-    // Simulate occasional failure for empty-looking keys
     const isValid = conn.apiKey.length >= 8 && conn.apiSecret.length >= 8
 
     if (isValid) {
       updateConnection(id, {
         status: 'connected',
-        portfolio: mockPortfolio(conn.cexId),
+        // No portfolio data – a real backend call to the CEX would populate this
+        portfolio: undefined,
       })
     } else {
       updateConnection(id, {
@@ -578,16 +573,10 @@ export function CexApiSettings() {
   }
 
   const refreshPortfolio = async (id: string) => {
-    // Capture connection data synchronously before the async delay to avoid stale state reads
     const conn = connections.find(c => c.id === id)
     if (!conn || conn.status !== 'connected') return
-
-    updateConnection(id, { status: 'testing' })
-    await new Promise(r => setTimeout(r, 800))
-    updateConnection(id, {
-      status: 'connected',
-      portfolio: mockPortfolio(conn.cexId + Date.now().toString()),
-    })
+    // Real portfolio refresh would call the backend; no-op until backend is available
+    updateConnection(id, { status: 'connected' })
   }
 
   return (

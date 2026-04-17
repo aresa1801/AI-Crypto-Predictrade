@@ -1,26 +1,13 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { CryptoAsset } from '@/lib/types'
-import { cryptoAssets } from '@/lib/mock/data'
+import { CryptoAssetWithSparkline, fetchCryptoMarketDataWithSparklines } from '@/lib/api/coingecko'
 import { Sparkline } from '@/components/charts/sparkline'
 import { TrendingUp, TrendingDown } from 'lucide-react'
 import { ErrorBoundary } from '@/components/error-boundary'
 
-// Generate mock sparkline data
-function generateSparklineData(baseValue: number): Array<{ value: number }> {
-  const data: Array<{ value: number }> = []
-  let value = baseValue
-  for (let i = 0; i < 20; i++) {
-    const change = (Math.random() - 0.48) * baseValue * 0.02
-    value = Math.max(value + change, baseValue * 0.9)
-    data.push({ value })
-  }
-  return data
-}
-
 interface WatchlistData {
-  asset: CryptoAsset
+  asset: CryptoAssetWithSparkline
   sparkline: Array<{ value: number }>
 }
 
@@ -34,11 +21,13 @@ function WatchlistContent() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        await new Promise((resolve) => setTimeout(resolve, Math.random() * 600 + 600))
+        const assets = await fetchCryptoMarketDataWithSparklines(5)
 
-        const watchlistData: WatchlistData[] = cryptoAssets.slice(0, 5).map((asset) => ({
+        const watchlistData: WatchlistData[] = assets.map((asset) => ({
           asset,
-          sparkline: generateSparklineData(asset.price),
+          sparkline: asset.sparkline7d.length > 0
+            ? asset.sparkline7d.map((value) => ({ value }))
+            : [{ value: asset.price }],
         }))
 
         setState({ status: 'success', data: watchlistData, error: null })
@@ -52,6 +41,8 @@ function WatchlistContent() {
     }
 
     loadData()
+    const interval = setInterval(loadData, 60_000)
+    return () => clearInterval(interval)
   }, [])
 
   if (state.status === 'loading') {
@@ -137,3 +128,4 @@ export function Watchlist() {
     </div>
   )
 }
+

@@ -144,6 +144,7 @@ export interface CoinGeckoMarketData {
   total_volume: number
   market_cap: number
   image: string
+  sparkline_in_7d?: { price: number[] }
 }
 
 export interface CoinGeckoGlobalData {
@@ -232,6 +233,68 @@ export async function fetchCryptoMarketData(): Promise<CryptoAsset[]> {
     // Last resort: static fallback data
     console.info('fetchCryptoMarketData: serving static fallback data.')
     return FALLBACK_ASSETS
+  }
+}
+
+/**
+ * Fetch top N cryptocurrencies including 7-day sparkline price arrays.
+ * Used by the Watchlist component for mini charts.
+ * Falls back to cached data or FALLBACK_ASSETS on error.
+ */
+export interface CryptoAssetWithSparkline extends CryptoAsset {
+  sparkline7d: number[]
+}
+
+const SPARKLINE_CACHE_KEY = 'cg_sparkline_data_v1'
+
+export async function fetchCryptoMarketDataWithSparklines(limit = 10): Promise<CryptoAssetWithSparkline[]> {
+  const url =
+    `${COINGECKO_API_BASE}/coins/markets?` +
+    new URLSearchParams({
+      vs_currency: 'usd',
+      order: 'market_cap_desc',
+      per_page: String(limit + 20), // fetch extra to account for stablecoin filtering
+      page: '1',
+      sparkline: 'true',
+      price_change_percentage: '24h',
+    })
+
+  try {
+    const response = await fetchWithRetry(url)
+    if (!response.ok) throw new Error(`CoinGecko API error: ${response.status}`)
+
+    const raw: CoinGeckoMarketData[] = await response.json()
+
+    const assets: CryptoAssetWithSparkline[] = raw
+      .filter(coin => {
+        if (STABLECOIN_IDS.includes(coin.id)) return false
+        if (STABLECOIN_SYMBOLS.includes(coin.symbol.toUpperCase())) return false
+        const lowerName = coin.name.toLowerCase()
+        if (lowerName.includes('usd') && (lowerName.includes('stable') || lowerName.includes('dollar'))) return false
+        return true
+      })
+      .slice(0, limit)
+      .map(coin => ({
+        id: coin.id,
+        symbol: coin.symbol.toUpperCase(),
+        name: coin.name,
+        price: coin.current_price,
+        change24h: coin.price_change_percentage_24h || 0,
+        volume24h: coin.total_volume,
+        marketCap: coin.market_cap,
+        sparkline7d: coin.sparkline_in_7d?.price ?? [],
+      }))
+
+    writeCache<CryptoAssetWithSparkline[]>(SPARKLINE_CACHE_KEY, assets)
+    return assets
+  } catch (error) {
+    console.warn('fetchCryptoMarketDataWithSparklines: live fetch failed, using fallback.', error)
+
+    const cached = readCache<CryptoAssetWithSparkline[]>(SPARKLINE_CACHE_KEY)
+    if (cached) return cached.data
+
+    // Return fallback assets with empty sparklines
+    return FALLBACK_ASSETS.slice(0, limit).map(a => ({ ...a, sparkline7d: [] }))
   }
 }
 
