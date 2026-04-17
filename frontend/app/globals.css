@@ -7,6 +7,14 @@
   --color-text-primary: rgb(248 250 252 / <alpha-value>);
   --color-text-secondary: rgb(148 163 184 / <alpha-value>);
   --color-border-color: rgb(51 51 102 / <alpha-value>);
+  --color-popover: rgb(17 17 35);
+  --color-popover-foreground: rgb(248 250 252);
+  --color-muted-foreground: rgb(148 163 184);
+  --color-accent: rgb(23 23 45);
+  --color-accent-foreground: rgb(248 250 252);
+  --color-input: rgb(51 51 102);
+  --color-border: rgb(51 51 102);
+  --color-ring: rgb(99 102 241);
   --color-accent-blue: rgb(59 130 246 / <alpha-value>);
   --color-accent-cyan: rgb(6 182 212 / <alpha-value>);
   --color-accent-purple: rgb(168 85 247 / <alpha-value>);
