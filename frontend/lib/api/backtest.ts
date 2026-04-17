@@ -55,6 +55,9 @@ function sharpe(returns: number[]): number {
   return std === 0 ? 0 : (mean / std) * Math.sqrt(252)
 }
 
+/** Fraction of portfolio risked per trade. */
+const POSITION_SIZE_RATIO = 0.1
+
 export async function fetchBacktestResult(coin = 'bitcoin', days = 120): Promise<BacktestResult> {
   // Serve from cache if fresh
   const cached = readCache<BacktestResult>(BT_CACHE_KEY)
@@ -98,7 +101,7 @@ export async function fetchBacktestResult(coin = 'bitcoin', days = 120): Promise
         // Exit long
         const exitPrice   = prices[i]
         const pctChange   = (exitPrice - entryPrice) / entryPrice
-        const profit      = entryEquity * 0.1 * pctChange   // risk 10%
+        const profit      = entryEquity * POSITION_SIZE_RATIO * pctChange   // risk POSITION_SIZE_RATIO of entry equity
 
         equity += profit
         inPosition = false

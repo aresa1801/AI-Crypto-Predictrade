@@ -84,9 +84,12 @@ function createConnection(): CexConnection {
 
 // ─── ID generator ────────────────────────────────────────────────────────────
 
-let _idCounter = 0
 function nextId(): string {
-  return `conn-${Date.now()}-${++_idCounter}`
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
+  // Fallback for environments without crypto.randomUUID
+  return `conn-${Date.now()}-${Math.floor(Math.random() * 1e9)}`
 }
 
 

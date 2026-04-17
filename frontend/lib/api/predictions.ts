@@ -15,13 +15,16 @@ export interface PredictionResult {
 }
 
 /** Deterministic hash from a string to a number in [0, 1). */
-function seededRatio(seed: string): number {
+function deterministicRatio(seed: string): number {
   let h = 0
   for (let i = 0; i < seed.length; i++) {
     h = ((h << 5) - h + seed.charCodeAt(i)) | 0
   }
   return (Math.abs(h) % 10_000) / 10_000
 }
+
+/** Minimum 24h change (%) to classify as bullish/bearish; within band → neutral. */
+const DIRECTION_THRESHOLD = 0.5
 
 /** Pick a timeframe deterministically from the asset id. */
 function pickTimeframe(assetId: string): '1h' | '4h' | '1d' | '1w' {
@@ -42,9 +45,9 @@ export async function fetchAIPredictions(): Promise<Prediction[]> {
 
   // Generate predictions based on market data
   const predictions: Prediction[] = cryptoAssets.map((asset, index) => {
-    const direction = asset.change24h > 0.5
+    const direction = asset.change24h > DIRECTION_THRESHOLD
       ? ('bullish' as const)
-      : asset.change24h < -0.5
+      : asset.change24h < -DIRECTION_THRESHOLD
         ? ('bearish' as const)
         : ('neutral' as const)
 
@@ -55,9 +58,9 @@ export async function fetchAIPredictions(): Promise<Prediction[]> {
       : 0
     const rawConfidence = Math.min(95, absChange * 8 + volumeRatio * 15 + 45)
     // Add a small deterministic offset per asset so values aren't all identical
-    const confidence = Math.min(95, rawConfidence + seededRatio(asset.id) * 10)
+    const confidence = Math.min(95, rawConfidence + deterministicRatio(asset.id) * 10)
 
-    const priceMoveFactor = (0.02 + seededRatio(asset.id + 'move') * 0.13)
+    const priceMoveFactor = (0.02 + deterministicRatio(asset.id + 'move') * 0.13)
     const targetPrice = direction === 'bearish'
       ? asset.price * (1 - priceMoveFactor)
       : asset.price * (1 + priceMoveFactor)
@@ -70,7 +73,7 @@ export async function fetchAIPredictions(): Promise<Prediction[]> {
     const timeframe = pickTimeframe(asset.id)
 
     // createdAt: spread across last hour deterministically
-    const ageMs = seededRatio(asset.id + 'age') * 3_600_000
+    const ageMs = deterministicRatio(asset.id + 'age') * 3_600_000
     const createdAt = new Date(now - ageMs)
 
     // Status: assets that haven't moved much are 'correct' (verified by low volatility)

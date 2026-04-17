@@ -75,8 +75,7 @@ export default function DashboardPage() {
       color: 'text-accent-blue',
       border: 'border-accent-blue/20',
       bg: 'bg-accent-blue/8',
-    },
-    {
+    },    {
       label: 'BTC Dominance',
       value: kpi ? kpi.btcDominance : '—',
       sub: 'Live global market share',
