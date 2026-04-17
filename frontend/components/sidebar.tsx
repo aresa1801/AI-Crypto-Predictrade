@@ -2,11 +2,12 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { TrendingUp, Calculator, RotateCw, Settings, Home, Activity, ChevronLeft, ChevronRight, ShoppingCart, Zap, FlaskConical } from 'lucide-react'
+import { TrendingUp, Calculator, RotateCw, Settings, Home, Activity, ChevronLeft, ChevronRight, ShoppingCart, Zap, FlaskConical, Rocket } from 'lucide-react'
 import { useSidebar } from '@/contexts/sidebar-context'
 
 const navItems = [
   { href: '/dashboard',       label: 'Dashboard',        icon: Home,        dotColor: 'bg-accent-blue',    iconColor: 'text-accent-blue',    indicatorColor: 'bg-accent-blue'    },
+  { href: '/live-trading',    label: 'Live Trading',     icon: Rocket,      dotColor: 'bg-accent-red',     iconColor: 'text-accent-red',     indicatorColor: 'bg-accent-red'     },
   { href: '/predictions',     label: 'AI Signals',       icon: TrendingUp,  dotColor: 'bg-accent-cyan',    iconColor: 'text-accent-cyan',    indicatorColor: 'bg-accent-cyan'    },
   { href: '/opportunity-buy', label: 'Opportunity Buy',  icon: ShoppingCart, dotColor: 'bg-accent-emerald', iconColor: 'text-accent-emerald', indicatorColor: 'bg-accent-emerald' },
   { href: '/risk',            label: 'Risk Analysis',    icon: Calculator,  dotColor: 'bg-accent-amber',   iconColor: 'text-accent-amber',   indicatorColor: 'bg-accent-amber'   },
