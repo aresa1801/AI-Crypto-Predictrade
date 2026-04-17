@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { TrendingUp, Calculator, RotateCw, Settings, Home, Activity, ChevronLeft, ChevronRight, ShoppingCart, Zap } from 'lucide-react'
+import { TrendingUp, Calculator, RotateCw, Settings, Home, Activity, ChevronLeft, ChevronRight, ShoppingCart, Zap, FlaskConical } from 'lucide-react'
 import { useSidebar } from '@/contexts/sidebar-context'
 
 const navItems = [
@@ -10,8 +10,9 @@ const navItems = [
   { href: '/predictions',     label: 'AI Signals',       icon: TrendingUp,  dotColor: 'bg-accent-cyan',    iconColor: 'text-accent-cyan',    indicatorColor: 'bg-accent-cyan'    },
   { href: '/opportunity-buy', label: 'Opportunity Buy',  icon: ShoppingCart, dotColor: 'bg-accent-emerald', iconColor: 'text-accent-emerald', indicatorColor: 'bg-accent-emerald' },
   { href: '/risk',            label: 'Risk Analysis',    icon: Calculator,  dotColor: 'bg-accent-amber',   iconColor: 'text-accent-amber',   indicatorColor: 'bg-accent-amber'   },
-  { href: '/backtest',        label: 'Backtest',         icon: RotateCw,    dotColor: 'bg-accent-purple',  iconColor: 'text-accent-purple',  indicatorColor: 'bg-accent-purple'  },
-  { href: '/settings',        label: 'Settings',         icon: Settings,    dotColor: 'bg-accent-teal',    iconColor: 'text-accent-teal',    indicatorColor: 'bg-accent-teal'    },
+  { href: '/backtest',        label: 'Backtest',         icon: RotateCw,       dotColor: 'bg-accent-purple',  iconColor: 'text-accent-purple',  indicatorColor: 'bg-accent-purple'  },
+  { href: '/demo-account',   label: 'Demo Account',     icon: FlaskConical,   dotColor: 'bg-accent-indigo',  iconColor: 'text-accent-indigo',  indicatorColor: 'bg-accent-indigo'  },
+  { href: '/settings',        label: 'Settings',         icon: Settings,       dotColor: 'bg-accent-teal',    iconColor: 'text-accent-teal',    indicatorColor: 'bg-accent-teal'    },
 ]
 
 export function Sidebar() {
