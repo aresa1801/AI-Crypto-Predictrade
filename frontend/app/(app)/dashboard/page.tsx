@@ -9,7 +9,7 @@ const MarketSnapshot = lazy(() => import('@/components/dashboard/market-snapshot
 const PredictionGauges = lazy(() => import('@/components/dashboard/prediction-gauges').then(m => ({ default: m.PredictionGauges })))
 const RecentPredictions = lazy(() => import('@/components/dashboard/recent-predictions').then(m => ({ default: m.RecentPredictions })))
 const SpotPortfolio = lazy(() => import('@/components/dashboard/spot-portfolio').then(m => ({ default: m.SpotPortfolio })))
-const SpotOrderForm = lazy(() => import('@/components/dashboard/spot-order-form').then(m => ({ default: m.SpotOrderForm })))
+const CexApiSettings = lazy(() => import('@/components/dashboard/cex-api-settings').then(m => ({ default: m.CexApiSettings })))
 const PredictionMarkets = lazy(() => import('@/components/dashboard/prediction-markets').then(m => ({ default: m.PredictionMarkets })))
 
 export default function DashboardPage() {
@@ -77,7 +77,7 @@ export default function DashboardPage() {
         </div>
         <div className="lg:col-span-2">
           <Suspense fallback={<CardSkeleton />}>
-            <SpotOrderForm />
+            <CexApiSettings />
           </Suspense>
         </div>
       </div>
