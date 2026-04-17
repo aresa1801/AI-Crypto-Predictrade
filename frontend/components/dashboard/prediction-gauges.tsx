@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useCallback, memo } from 'react'
 import { Prediction } from '@/lib/types'
-import { fetchAIPredictions } from '@/lib/api/predictions'
-import { ArrowUp, ArrowDown, TrendingUp } from 'lucide-react'
+import { fetchAIPredictionsWithMeta } from '@/lib/api/predictions'
+import { ArrowUp, ArrowDown, TrendingUp, AlertTriangle, RefreshCw } from 'lucide-react'
 import { CardSkeleton } from '@/components/skeletons'
 import { ErrorBoundary } from '@/components/error-boundary'
 
@@ -109,26 +109,27 @@ function PredictionGaugesContent() {
   const [state, setState] = useState<{
     status: 'loading' | 'success' | 'error'
     data: Prediction[] | null
+    stale: boolean
     error: Error | null
-  }>({ status: 'loading', data: null, error: null })
+  }>({ status: 'loading', data: null, stale: false, error: null })
 
   const loadData = useCallback(async () => {
     try {
-      // Fetch real AI predictions from API
-      const predictions = await fetchAIPredictions()
+      const { predictions, stale } = await fetchAIPredictionsWithMeta()
       
       // Sort by confidence and get top 4
       const topPredictions = predictions
         .sort((a, b) => (b.confidenceLevel || b.confidence) - (a.confidenceLevel || a.confidence))
         .slice(0, 4)
       
-      setState({ status: 'success', data: topPredictions, error: null })
+      setState({ status: 'success', data: topPredictions, stale, error: null })
     } catch (error) {
-      setState({
-        status: 'error',
-        data: null,
+      setState((prev) => ({
+        status: prev.data ? 'success' : 'error', // keep showing stale data if available
+        data: prev.data,
+        stale: true,
         error: error instanceof Error ? error : new Error('Failed to load predictions'),
-      })
+      }))
     }
   }, [])
 
@@ -147,8 +148,17 @@ function PredictionGaugesContent() {
 
   if (state.status === 'error') {
     return (
-      <div className="card-gradient flex items-center justify-center py-8">
-        <p className="text-accent-red">Failed to load predictions</p>
+      <div className="card-gradient flex flex-col items-center justify-center py-8 gap-3">
+        <AlertTriangle className="w-8 h-8 text-accent-amber" />
+        <p className="text-text-secondary text-sm">Unable to load predictions</p>
+        <button
+          onClick={loadData}
+          className="inline-flex items-center gap-2 px-3 py-1.5 text-xs bg-accent-blue text-white rounded-lg hover:bg-blue-600 transition-colors"
+          aria-label="Retry loading predictions"
+        >
+          <RefreshCw className="w-3 h-3" />
+          Retry
+        </button>
       </div>
     )
   }
@@ -168,6 +178,12 @@ function PredictionGaugesContent() {
           <TrendingUp className="w-5 h-5 text-white" />
         </div>
         <h3 className="text-lg font-semibold gradient-text">Top AI Predictions</h3>
+        {state.stale && (
+          <span className="ml-auto flex items-center gap-1 text-xs text-accent-amber px-2 py-0.5 rounded bg-accent-amber/10 border border-accent-amber/30">
+            <AlertTriangle className="w-3 h-3" />
+            Cached
+          </span>
+        )}
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

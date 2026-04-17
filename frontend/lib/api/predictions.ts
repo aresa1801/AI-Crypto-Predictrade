@@ -5,58 +5,65 @@
  * For production, integrate with backend AI prediction service
  */
 
-import { Prediction, CryptoAsset } from '../types'
-import { fetchCryptoMarketData } from './coingecko'
+import { Prediction } from '../types'
+import { fetchCryptoMarketData, isMarketDataFresh } from './coingecko'
+
+export interface PredictionResult {
+  predictions: Prediction[]
+  /** True when data was served from cache/fallback rather than a live API response. */
+  stale: boolean
+}
 
 /**
- * Generate AI predictions based on real market data
- * In production, this should call your backend AI service
+ * Generate AI predictions based on real market data.
+ * Never throws – returns whatever data is available (live, cached, or fallback).
  */
 export async function fetchAIPredictions(): Promise<Prediction[]> {
-  try {
-    // Fetch real crypto data
-    const cryptoAssets = await fetchCryptoMarketData()
+  // fetchCryptoMarketData never throws – it falls back gracefully
+  const cryptoAssets = await fetchCryptoMarketData()
+  
+  // Generate predictions based on market data
+  const predictions: Prediction[] = cryptoAssets.map((asset, index) => {
+    const direction = asset.change24h > 0 ? ('bullish' as const) : ('bearish' as const)
+    const confidence = Math.min(95, Math.abs(asset.change24h) * 10 + 50 + Math.random() * 20)
+    const predictedPriceChange = (Math.random() * 0.15 + 0.02) * (direction === 'bullish' ? 1 : -1)
+    const targetPrice = asset.price * (1 + predictedPriceChange)
     
-    // Generate predictions based on real market data
-    const predictions: Prediction[] = cryptoAssets.map((asset, index) => {
-      // Simple momentum-based prediction logic
-      // In production, replace with actual AI model predictions
-      const direction = asset.change24h > 0 ? ('bullish' as const) : ('bearish' as const)
-      const confidence = Math.min(95, Math.abs(asset.change24h) * 10 + 50 + Math.random() * 20)
-      const predictedPriceChange = (Math.random() * 0.15 + 0.02) * (direction === 'bullish' ? 1 : -1)
-      const targetPrice = asset.price * (1 + predictedPriceChange)
-      
-      // Calculate expected value and risk/reward
-      const potentialGain = Math.abs(targetPrice - asset.price)
-      const risk = potentialGain * 0.5 // Simplified risk calculation
-      const expectedValue = (confidence / 100) * potentialGain - ((100 - confidence) / 100) * risk
-      const riskReward = potentialGain / risk
+    const potentialGain = Math.abs(targetPrice - asset.price)
+    const risk = potentialGain * 0.5
+    const expectedValue = (confidence / 100) * potentialGain - ((100 - confidence) / 100) * risk
+    const riskReward = potentialGain / risk
 
-      return {
-        id: `pred-${asset.id}-${Date.now()}-${index}`,
-        asset,
-        direction,
-        confidence,
-        confidenceLevel: Math.round(confidence),
-        targetPrice,
-        currentPrice: asset.price,
-        predictedPrice: targetPrice,
-        predictedDirection: direction === 'bullish' ? 'up' : 'down',
-        expectedValue,
-        riskReward,
-        timeframe: ['1h', '4h', '1d', '1w'][Math.floor(Math.random() * 4)] as '1h' | '4h' | '1d' | '1w',
-        timestamp: new Date(),
-        createdAt: new Date(Date.now() - Math.random() * 3600000), // Random time within last hour
-        status: ['active', 'active', 'active', 'correct'][Math.floor(Math.random() * 4)] as any,
-        modelVersion: 'v2.1.0',
-      }
-    })
+    return {
+      id: `pred-${asset.id}-${Date.now()}-${index}`,
+      asset,
+      direction,
+      confidence,
+      confidenceLevel: Math.round(confidence),
+      targetPrice,
+      currentPrice: asset.price,
+      predictedPrice: targetPrice,
+      predictedDirection: direction === 'bullish' ? 'up' : 'down',
+      expectedValue,
+      riskReward,
+      timeframe: (['1h', '4h', '1d', '1w'] as const)[Math.floor(Math.random() * 4)],
+      timestamp: new Date(),
+      createdAt: new Date(Date.now() - Math.random() * 3_600_000),
+      status: (['active', 'active', 'active', 'correct'] as const)[Math.floor(Math.random() * 4)],
+      modelVersion: 'v2.1.0',
+    }
+  })
 
-    return predictions
-  } catch (error) {
-    console.error('Error fetching AI predictions:', error)
-    throw error
-  }
+  return predictions
+}
+
+/**
+ * Fetch AI predictions and indicate whether the underlying data is stale.
+ * Use this when you want to show a "data may be outdated" banner.
+ */
+export async function fetchAIPredictionsWithMeta(): Promise<PredictionResult> {
+  const predictions = await fetchAIPredictions()
+  return { predictions, stale: !isMarketDataFresh() }
 }
 
 /**
