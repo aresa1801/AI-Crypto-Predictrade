@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import type { ReactNode } from 'react'
 import { Prediction } from '@/lib/types'
 import { TrendingUp, TrendingDown, Zap, Wind, RefreshCw, Minus } from 'lucide-react'
@@ -119,9 +119,16 @@ export function PredictionCard({ prediction }: PredictionCardProps) {
 
   const sentimentBadges = getSentimentBadges()
 
-  // Calculate confidence interval (mock for now)
-  const ciLower = (30 + Math.random() * 10).toFixed(1)
-  const ciUpper = (40 + Math.random() * 15).toFixed(1)
+  // Calculate stable CI values from prediction data (no Math.random to avoid hydration mismatch)
+  const ciLower = useMemo(() => {
+    const seed = (asset.id.charCodeAt(0) + confidence) % 10
+    return (30 + seed).toFixed(1)
+  }, [asset.id, confidence])
+
+  const ciUpper = useMemo(() => {
+    const seed = (asset.id.charCodeAt(0) + confidence) % 15
+    return (40 + seed).toFixed(1)
+  }, [asset.id, confidence])
 
   // Determine border animation class based on signal
   const getBorderClass = () => {

@@ -97,20 +97,22 @@ function RecentPredictionsContent() {
           <Clock className="w-5 h-5 text-white" />
         </div>
         <h3 className="text-base lg:text-lg font-semibold gradient-text">Recent Predictions</h3>
-        {state.stale && (
-          <span className="ml-auto flex items-center gap-1 text-xs text-accent-amber px-2 py-0.5 rounded bg-accent-amber/10 border border-accent-amber/30">
-            <AlertTriangle className="w-3 h-3" />
-            Cached data
-          </span>
-        )}
-        <button
-          onClick={loadData}
-          className="ml-auto flex items-center gap-1 text-xs text-text-secondary hover:text-text-primary transition-colors px-2 py-1 rounded hover:bg-surface-secondary/50"
-          aria-label="Refresh predictions"
-          title="Refresh"
-        >
-          <RefreshCw className="w-3 h-3" />
-        </button>
+        <div className="ml-auto flex items-center gap-2 flex-shrink-0">
+          {state.stale && (
+            <span className="flex items-center gap-1 text-xs text-accent-amber px-2 py-0.5 rounded bg-accent-amber/10 border border-accent-amber/30">
+              <AlertTriangle className="w-3 h-3" />
+              Cached data
+            </span>
+          )}
+          <button
+            onClick={loadData}
+            className="flex items-center gap-1 text-xs text-text-secondary hover:text-text-primary transition-colors px-2 py-1 rounded hover:bg-surface-secondary/50"
+            aria-label="Refresh predictions"
+            title="Refresh"
+          >
+            <RefreshCw className="w-3 h-3" />
+          </button>
+        </div>
       </div>
 
       <div className="overflow-x-auto -mx-4 sm:-mx-0">

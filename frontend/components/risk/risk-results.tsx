@@ -1,8 +1,7 @@
 'use client'
 
-import { BarChart, Bar } from 'recharts'
+import { RiskSimulationParams } from '@/lib/types'
 import { EnhancedBacktestChart } from '@/components/charts/enhanced-backtest-chart'
-import { RiskSimulationParams } from '@/app/(app)/risk/page'
 import { TrendingUp, AlertCircle } from 'lucide-react'
 
 interface RiskResultsProps {
