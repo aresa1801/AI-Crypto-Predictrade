@@ -23,48 +23,74 @@ export default function DashboardPage() {
 
   return (
     <div className="p-4 lg:p-8 space-y-6">
-      {/* Header with gradient */}
-      <div className="space-y-3">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-accent-purple to-accent-pink flex items-center justify-center shadow-lg shadow-accent-purple/30">
-            <TrendingUp className="w-6 h-6 text-white" />
+      {/* Header */}
+      <div className="space-y-4">
+        <div className="flex items-start gap-4">
+          <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-accent-blue to-accent-cyan flex items-center justify-center shadow-lg shadow-accent-blue/25 flex-shrink-0 mt-0.5">
+            <TrendingUp className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h1 className="text-2xl lg:text-3xl font-bold gradient-text">AI Spot Trading Dashboard</h1>
-            <p className="text-sm lg:text-base text-text-secondary">Real-time spot market intelligence with AI predictions & market analysis</p>
+            <h1 className="text-2xl lg:text-3xl font-bold tracking-tight gradient-text-blue">
+              AI Spot Trading Dashboard
+            </h1>
+            <p className="text-sm text-text-secondary mt-0.5">
+              Real-time spot market intelligence · AI predictions · Risk analysis
+            </p>
           </div>
         </div>
-        
-        {/* Quick Stats Bar */}
+
+        {/* KPI Row */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <div className="p-4 rounded-xl bg-gradient-to-br from-accent-emerald/20 to-accent-teal/20 border border-accent-emerald/30 backdrop-blur-sm">
-            <div className="flex items-center gap-2 mb-1">
-              <Activity className="w-4 h-4 text-accent-emerald" />
-              <span className="text-xs text-text-secondary">Spot Holdings</span>
+          {[
+            {
+              label: 'Spot Holdings',
+              value: '5',
+              sub: 'Active Positions',
+              icon: Activity,
+              color: 'text-accent-emerald',
+              border: 'border-accent-emerald/20',
+              bg: 'bg-accent-emerald/8',
+            },
+            {
+              label: 'AI Win Rate',
+              value: '78.5%',
+              sub: 'Last 30 Signals',
+              icon: Zap,
+              color: 'text-accent-blue',
+              border: 'border-accent-blue/20',
+              bg: 'bg-accent-blue/8',
+            },
+            {
+              label: 'Portfolio Value',
+              value: '$50,406',
+              sub: '+12.4% this month',
+              icon: TrendingUp,
+              color: 'text-accent-cyan',
+              border: 'border-accent-cyan/20',
+              bg: 'bg-accent-cyan/8',
+            },
+            {
+              label: 'AI Confidence',
+              value: '92%',
+              sub: 'Model Accuracy',
+              icon: Activity,
+              color: 'text-accent-amber',
+              border: 'border-accent-amber/20',
+              bg: 'bg-accent-amber/8',
+            },
+          ].map(({ label, value, sub, icon: Icon, color, border, bg }) => (
+            <div
+              key={label}
+              className={`relative p-4 rounded-xl border ${border} bg-surface-primary/50 backdrop-blur-sm overflow-hidden`}
+            >
+              <div className="flex items-start justify-between mb-2">
+                <p className="text-xs font-medium text-text-secondary">{label}</p>
+                <Icon className={`w-3.5 h-3.5 ${color} opacity-70 flex-shrink-0`} />
+              </div>
+              <p className={`text-2xl font-bold ${color} tracking-tight`}>{value}</p>
+              <p className="text-[10px] text-text-secondary/60 mt-1 font-medium">{sub}</p>
             </div>
-            <p className="text-2xl font-bold text-accent-emerald">5</p>
-          </div>
-          <div className="p-4 rounded-xl bg-gradient-to-br from-accent-blue/20 to-accent-cyan/20 border border-accent-blue/30 backdrop-blur-sm">
-            <div className="flex items-center gap-2 mb-1">
-              <Zap className="w-4 h-4 text-accent-blue" />
-              <span className="text-xs text-text-secondary">AI Win Rate</span>
-            </div>
-            <p className="text-2xl font-bold text-accent-blue">78.5%</p>
-          </div>
-          <div className="p-4 rounded-xl bg-gradient-to-br from-accent-purple/20 to-accent-pink/20 border border-accent-purple/30 backdrop-blur-sm">
-            <div className="flex items-center gap-2 mb-1">
-              <TrendingUp className="w-4 h-4 text-accent-purple" />
-              <span className="text-xs text-text-secondary">Portfolio Value</span>
-            </div>
-            <p className="text-2xl font-bold text-accent-purple">$50,406</p>
-          </div>
-          <div className="p-4 rounded-xl bg-gradient-to-br from-accent-indigo/20 to-accent-purple/20 border border-accent-indigo/30 backdrop-blur-sm">
-            <div className="flex items-center gap-2 mb-1">
-              <Activity className="w-4 h-4 text-accent-indigo" />
-              <span className="text-xs text-text-secondary">AI Confidence</span>
-            </div>
-            <p className="text-2xl font-bold text-accent-indigo">92%</p>
-          </div>
+          ))}
         </div>
       </div>
 

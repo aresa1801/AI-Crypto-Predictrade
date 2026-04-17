@@ -67,3 +67,20 @@ export interface PriceChartDataPoint {
   confidenceLow?: number
   confidenceHigh?: number
 }
+
+export interface UserSettings {
+  modelPreference: 'fast' | 'balanced' | 'accurate'
+  riskTolerance: 'conservative' | 'moderate' | 'aggressive'
+  notificationsEnabled: boolean
+  theme: 'dark' | 'light' | 'system'
+  apiKey?: string
+}
+
+export interface RiskSimulationParams {
+  initialCapital: number
+  riskPerTrade: number
+  winRate: number
+  avgWin: number
+  avgLoss: number
+  numTrades: number
+}

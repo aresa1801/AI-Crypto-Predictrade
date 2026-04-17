@@ -1,60 +1,63 @@
 'use client'
 
 import { usePathname } from 'next/navigation'
-import { Bell, User, Search, Zap } from 'lucide-react'
+import { Bell, User, Search } from 'lucide-react'
 import { MobileNav } from './mobile-nav'
 import { ThemeToggle } from './theme-toggle'
 
-const breadcrumbs: Record<string, string> = {
-  '/dashboard': 'Spot Trading Dashboard',
-  '/predictions': 'AI Trading Signals',
-  '/risk': 'Risk Analysis',
-  '/backtest': 'Strategy Backtest',
-  '/settings': 'Settings',
+const breadcrumbs: Record<string, { title: string; sub: string }> = {
+  '/dashboard':       { title: 'Dashboard',          sub: 'Spot Trading Overview'   },
+  '/predictions':     { title: 'AI Signals',          sub: 'Market Intelligence'     },
+  '/opportunity-buy': { title: 'Opportunity Buy',     sub: 'Entry Signal Scanner'    },
+  '/risk':            { title: 'Risk Analysis',       sub: 'Position Risk Tools'     },
+  '/backtest':        { title: 'Strategy Backtest',   sub: 'Historical Performance'  },
+  '/settings':        { title: 'Settings',            sub: 'Platform Configuration'  },
 }
 
 export function Topbar() {
   const pathname = usePathname()
-  const title = breadcrumbs[pathname] || 'Dashboard'
+  const page = breadcrumbs[pathname] ?? { title: 'Dashboard', sub: 'AI-Powered Spot Trading' }
 
   return (
-    <header className="sticky top-0 z-10 border-b border-border-color/50 bg-surface-primary/80 backdrop-blur-xl px-4 lg:px-8 py-4 flex items-center justify-between shadow-lg">
-      <div className="flex items-center gap-4">
+    <header className="sticky top-0 z-10 border-b border-border-color/55 bg-surface-primary/75 backdrop-blur-2xl px-4 lg:px-6 py-3 flex items-center justify-between shadow-[0_4px_20px_rgb(0_0_0/0.3)]">
+
+      {/* Left — page title */}
+      <div className="flex items-center gap-3 min-w-0">
         <MobileNav />
-        <div>
-          <h2 className="text-lg lg:text-xl font-bold text-text-primary">{title}</h2>
-          <p className="text-xs text-text-secondary">AI-Powered Spot Trading</p>
+        <div className="min-w-0">
+          <h2 className="text-base lg:text-lg font-bold text-text-primary leading-tight tracking-tight truncate">
+            {page.title}
+          </h2>
+          <p className="hidden sm:block text-[11px] text-text-secondary leading-none mt-0.5">{page.sub}</p>
         </div>
       </div>
-      
-      <div className="flex items-center gap-3 lg:gap-4">
-        {/* Search Button */}
-        <button className="hidden md:flex items-center gap-2 px-4 py-2 rounded-lg bg-surface-secondary/50 border border-border-color/50 text-text-secondary hover:text-text-primary hover:border-accent-cyan/50 transition-all duration-300 text-sm">
-          <Search className="w-4 h-4" />
-          <span>Search...</span>
-          <kbd className="hidden lg:inline-flex px-2 py-0.5 text-xs rounded bg-surface-primary border border-border-color">⌘K</kbd>
-        </button>
 
-        {/* Quick Actions */}
-        <button className="p-2.5 rounded-lg bg-gradient-to-br from-accent-purple/20 to-accent-pink/20 border border-accent-purple/30 text-accent-purple hover:shadow-lg hover:shadow-accent-purple/30 transition-all duration-300">
-          <Zap className="w-5 h-5" />
+      {/* Right — actions */}
+      <div className="flex items-center gap-2">
+
+        {/* Search */}
+        <button className="hidden md:flex items-center gap-2 px-3 py-2 rounded-lg bg-surface-secondary/50 border border-border-color/55 text-text-secondary hover:text-text-primary hover:border-accent-blue/40 transition-all duration-200 text-sm">
+          <Search className="w-3.5 h-3.5 flex-shrink-0" />
+          <span className="text-xs text-text-secondary/70">Search…</span>
+          <kbd className="hidden lg:inline-flex items-center px-1.5 py-0.5 text-[10px] rounded bg-surface-primary border border-border-color text-text-secondary/60 font-mono">⌘K</kbd>
         </button>
 
         <ThemeToggle />
-        
+
         {/* Notifications */}
-        <button className="relative p-2.5 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-secondary/50 transition-all duration-300">
-          <Bell className="w-5 h-5" />
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-accent-red rounded-full border-2 border-surface-primary animate-pulse"></span>
+        <button className="relative p-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-secondary/50 border border-transparent hover:border-border-color/50 transition-all duration-200">
+          <Bell className="w-4.5 h-4.5" />
+          <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-accent-red rounded-full border border-surface-primary animate-pulse" />
         </button>
-        
+
         {/* User Profile */}
-        <button className="flex items-center gap-3 p-2 pl-3 rounded-lg bg-surface-secondary/50 border border-border-color/50 hover:border-accent-cyan/50 transition-all duration-300">
-          <span className="hidden lg:block text-sm font-medium text-text-primary">Spot Trading Bot</span>
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-accent-cyan to-accent-blue flex items-center justify-center shadow-lg">
-            <User className="w-4 h-4 text-white" />
+        <button className="flex items-center gap-2.5 pl-2 pr-1 py-1 rounded-lg bg-surface-secondary/50 border border-border-color/55 hover:border-accent-blue/35 transition-all duration-200">
+          <span className="hidden lg:block text-xs font-medium text-text-primary">Spot Bot</span>
+          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-accent-blue to-accent-cyan flex items-center justify-center shadow-md shadow-accent-blue/25">
+            <User className="w-3.5 h-3.5 text-white" />
           </div>
         </button>
+
       </div>
     </header>
   )

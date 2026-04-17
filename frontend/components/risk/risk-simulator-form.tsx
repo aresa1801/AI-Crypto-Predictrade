@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { RiskSimulationParams } from '@/app/(app)/risk/page'
+import { RiskSimulationParams } from '@/lib/types'
 
 interface RiskSimulatorFormProps {
   initialParams: RiskSimulationParams
