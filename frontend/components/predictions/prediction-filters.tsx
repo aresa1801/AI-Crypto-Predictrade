@@ -1,9 +1,9 @@
 'use client'
 
-import { predictions, cryptoAssets } from '@/lib/mock-data'
 import { Prediction } from '@/lib/types'
 
 interface PredictionFiltersProps {
+  predictions: Prediction[]
   selectedAsset: Prediction
   onAssetChange: (asset: Prediction) => void
   timeframe: '1h' | '4h' | '1d' | '1w'
@@ -11,6 +11,7 @@ interface PredictionFiltersProps {
 }
 
 export function PredictionFilters({
+  predictions,
   selectedAsset,
   onAssetChange,
   timeframe,
@@ -57,3 +58,4 @@ export function PredictionFilters({
     </div>
   )
 }
+
