@@ -221,7 +221,7 @@ export default function OpportunityBuyPage() {
             {TIMEFRAME_OPTIONS.map(opt => (
               <button
                 key={opt.value}
-                onClick={() => { if (timeframe !== opt.value) setTimeframe(opt.value) }}
+                onClick={() => setTimeframe(opt.value)}
                 disabled={loading}
                 className={`relative px-4 py-1.5 rounded-lg text-sm font-bold transition-all disabled:opacity-50 ${
                   timeframe === opt.value
