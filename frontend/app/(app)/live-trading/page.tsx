@@ -7,7 +7,8 @@ import {
   CheckCircle2, XCircle, Clock, RefreshCw, Wallet, BarChart2,
   ArrowUpRight, ArrowDownRight, X, Bot, Play, Square, Activity,
   ChevronRight, Zap, Key, Eye, EyeOff, Trash2, Database,
-  Terminal, Copy, Check, Shield, AlertCircle, Settings,
+  Terminal, Copy, Check, Shield, AlertCircle, Settings, StopCircle,
+  Radio, Timer, Filter,
 } from 'lucide-react'
 import { fetchOpportunityBuys, OpportunityAsset, formatPrice } from '@/lib/api/opportunity-buy'
 import { fetchAIPredictionsWithMeta } from '@/lib/api/predictions'
@@ -172,10 +173,17 @@ export default function LiveTradingPage() {
   const [exitPrice, setExitPrice] = useState('')
   const [execError, setExecError] = useState('')
 
-  // Auto Trade
+  // Auto Trade (one-shot helper flag — reused internally)
   const [autoRunning, setAutoRunning] = useState(false)
   const [maxAutoTrades, setMaxAutoTrades] = useState(3)
   const [autoLog, setAutoLog] = useState<LiveAutoLogEntry[]>([])
+
+  // Auto Trade Bot (continuous mode)
+  const [autoBotActive, setAutoBotActive] = useState(false)
+  const [botScanning, setBotScanning] = useState(false)
+  const [nextCheckIn, setNextCheckIn] = useState(0)
+  const [scanInterval, setScanInterval] = useState(60) // seconds
+  const [minSignalFilter, setMinSignalFilter] = useState<'STRONG_BUY' | 'BUY'>('STRONG_BUY')
 
   // API Keys
   const [apiKeys, setApiKeys] = useState<LiveApiKey[]>([])
@@ -197,6 +205,14 @@ export default function LiveTradingPage() {
   const [sqlCopied, setSqlCopied] = useState(false)
 
   const settingsSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const autoBotIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const countdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const autoBotActiveRef = useRef(false)
+  const tradesRef = useRef<LiveTrade[]>([])
+  const scanningRef = useRef(false)
+
+  // Keep refs in sync with state
+  useEffect(() => { tradesRef.current = trades }, [trades])
 
   // ---------------------------------------------------------------------------
   // Hydrate from Supabase
@@ -473,8 +489,206 @@ export default function LiveTradingPage() {
   }
 
   // ---------------------------------------------------------------------------
-  // API Key management
+  // Auto Trade Bot — continuous scanning loop
   // ---------------------------------------------------------------------------
+  const runAutoScan = useCallback(async (
+    opts: {
+      exchange: string
+      capitalPerTrade: number
+      availableCapital: number
+      maxOpenTrades: number
+      minSignal: 'STRONG_BUY' | 'BUY'
+    }
+  ) => {
+    if (scanningRef.current) return
+    scanningRef.current = true
+    setBotScanning(true)
+
+    const addLog = (message: string, type: LiveAutoLogEntry['type'], extra?: { exchange?: string; symbol?: string }) => {
+      const entry: LiveAutoLogEntry = {
+        id: `livelog-${Date.now()}-${Math.random()}`,
+        timestamp: new Date(),
+        message,
+        type,
+        ...extra,
+      }
+      setAutoLog(prev => [entry, ...prev])
+      saveLiveAutoLog(entry)
+    }
+
+    addLog('🤖 Auto Trade Bot scanning for opportunities…', 'info', { exchange: opts.exchange })
+
+    let freshOpps: OpportunityAsset[] = []
+    try {
+      const data = await fetchOpportunityBuys(true, '4h')
+      freshOpps = data.opportunities
+      addLog(`Fetched ${freshOpps.length} signals from Opportunity Buy engine.`, 'info')
+    } catch {
+      addLog('⚠️ Could not refresh opportunities — skipping this cycle.', 'warning')
+      scanningRef.current = false
+      setBotScanning(false)
+      return
+    }
+
+    // Filter by minimum signal strength
+    const signalOrder: Record<string, number> = { STRONG_BUY: 2, BUY: 1, ACCUMULATE: 0 }
+    const minStrength = signalOrder[opts.minSignal] ?? 2
+    const qualified = freshOpps.filter(opp => (signalOrder[opp.signalStrength] ?? 0) >= minStrength)
+
+    if (qualified.length === 0) {
+      addLog(`No ${opts.minSignal.replace('_', ' ')} signals found — will check again next cycle.`, 'info')
+      scanningRef.current = false
+      setBotScanning(false)
+      return
+    }
+
+    // Skip assets already in an open trade
+    const openSymbols = new Set(tradesRef.current.filter(t => t.status === 'open').map(t => t.symbol))
+    const openCount = openSymbols.size
+    const slotsAvailable = Math.max(0, opts.maxOpenTrades - openCount)
+
+    if (slotsAvailable === 0) {
+      addLog(`Max open trades (${opts.maxOpenTrades}) reached — waiting for positions to close.`, 'info')
+      scanningRef.current = false
+      setBotScanning(false)
+      return
+    }
+
+    const candidates = qualified
+      .filter(opp => !openSymbols.has(opp.asset.symbol))
+      .slice(0, slotsAvailable)
+
+    if (candidates.length === 0) {
+      addLog('All qualified assets are already in open positions — skipping.', 'info')
+      scanningRef.current = false
+      setBotScanning(false)
+      return
+    }
+
+    let remaining = opts.availableCapital
+    let executed = 0
+    const newTrades: LiveTrade[] = []
+
+    for (const opp of candidates) {
+      if (remaining < opts.capitalPerTrade) {
+        addLog(`⏭ Skipped ${opp.asset.symbol}: insufficient capital ($${formatUSDT(remaining)} < $${formatUSDT(opts.capitalPerTrade)}).`, 'skip', { symbol: opp.asset.symbol })
+        continue
+      }
+      const entry = (opp.entryExit.entryLow + opp.entryExit.entryHigh) / 2
+      const targetExit = opp.entryExit.target1     // Auto sets T1 as exit
+      const sl = opp.entryExit.stopLoss            // System-calculated stop loss
+      const qty = opts.capitalPerTrade / entry
+      const trade: LiveTrade = {
+        id: `live-auto-${Date.now()}-${Math.random()}`,
+        exchange: opts.exchange,
+        asset: opp.asset.name,
+        symbol: opp.asset.symbol,
+        entryPrice: entry,
+        exitPrice: targetExit,
+        capitalUsed: opts.capitalPerTrade,
+        quantity: qty,
+        pnl: 0,
+        pnlPct: 0,
+        status: 'open',
+        openedAt: new Date(),
+        targetExit,
+        stopLoss: sl,
+        signal: opp.signalStrength,
+        tradeMode: 'auto',
+        fees: 0,
+      }
+      newTrades.push(trade)
+      remaining -= opts.capitalPerTrade
+      executed++
+      addLog(
+        `✅ Bot bought ${opp.asset.symbol} @ $${formatPrice(entry)} | T1: $${formatPrice(targetExit)} | SL: $${formatPrice(sl)} | Capital: $${formatUSDT(opts.capitalPerTrade)}`,
+        'success',
+        { exchange: opts.exchange, symbol: opp.asset.symbol },
+      )
+    }
+
+    if (newTrades.length > 0) {
+      setTrades(prev => [...newTrades].reverse().concat(prev))
+      await Promise.all(newTrades.map(t => saveLiveTrade(t)))
+    }
+
+    if (executed === 0) {
+      addLog('No new trades executed this cycle — insufficient capital or all slots full.', 'info')
+    } else {
+      addLog(`🤖 Bot opened ${executed} trade(s) on ${opts.exchange}.`, 'info', { exchange: opts.exchange })
+    }
+
+    scanningRef.current = false
+    setBotScanning(false)
+  }, [])  // no state deps — reads via closure params & refs
+
+  function stopAutoBot() {
+    if (autoBotIntervalRef.current) { clearInterval(autoBotIntervalRef.current); autoBotIntervalRef.current = null }
+    if (countdownIntervalRef.current) { clearInterval(countdownIntervalRef.current); countdownIntervalRef.current = null }
+    autoBotActiveRef.current = false
+    setAutoBotActive(false)
+    setNextCheckIn(0)
+    setBotScanning(false)
+    scanningRef.current = false
+    const stopEntry: LiveAutoLogEntry = {
+      id: `livelog-${Date.now()}-${Math.random()}`,
+      timestamp: new Date(),
+      message: '🛑 Auto Trade Bot stopped by user.',
+      type: 'info',
+    }
+    setAutoLog(prev => [stopEntry, ...prev])
+    saveLiveAutoLog(stopEntry)
+  }
+
+  function startAutoBot(opts: {
+    exchange: string
+    capitalPerTrade: number
+    availableCapital: number
+    maxOpenTrades: number
+    minSignal: 'STRONG_BUY' | 'BUY'
+    intervalSec: number
+  }) {
+    if (autoBotActiveRef.current) return
+    autoBotActiveRef.current = true
+    setAutoBotActive(true)
+
+    const startEntry: LiveAutoLogEntry = {
+      id: `livelog-${Date.now()}-${Math.random()}`,
+      timestamp: new Date(),
+      message: `🤖 Auto Trade Bot started — scanning every ${opts.intervalSec}s for ${opts.minSignal.replace('_', ' ')} signals on ${opts.exchange}.`,
+      type: 'info',
+      exchange: opts.exchange,
+    }
+    setAutoLog(prev => [startEntry, ...prev])
+    saveLiveAutoLog(startEntry)
+
+    // Run immediately, then on interval
+    runAutoScan(opts)
+    setNextCheckIn(opts.intervalSec)
+
+    countdownIntervalRef.current = setInterval(() => {
+      setNextCheckIn(prev => {
+        if (prev <= 1) return opts.intervalSec
+        return prev - 1
+      })
+    }, 1000)
+
+    autoBotIntervalRef.current = setInterval(() => {
+      if (!autoBotActiveRef.current) return
+      runAutoScan(opts)
+      setNextCheckIn(opts.intervalSec)
+    }, opts.intervalSec * 1000)
+  }
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (autoBotIntervalRef.current) clearInterval(autoBotIntervalRef.current)
+      if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current)
+    }
+  }, [])
+
+
   async function handleAddApiKey() {
     if (!newKeyExchange || !newKeyApi || !newKeySecret) return
     const key: LiveApiKey = {
@@ -879,6 +1093,45 @@ export default function LiveTradingPage() {
             ) : (
               /* ── Auto ────────────────────────────────────────────────────────── */
               <>
+                {/* Bot status bar */}
+                <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border mb-4 transition-all ${
+                  autoBotActive
+                    ? 'bg-accent-red/10 border-accent-red/40'
+                    : 'bg-surface-secondary/40 border-border-color/40'
+                }`}>
+                  <div className="relative flex-shrink-0">
+                    <Bot className={`w-5 h-5 ${autoBotActive ? 'text-accent-red' : 'text-text-secondary'}`} />
+                    {autoBotActive && (
+                      <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-accent-red animate-ping" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className={`text-sm font-bold ${autoBotActive ? 'text-accent-red' : 'text-text-secondary'}`}>
+                        {autoBotActive ? 'Auto Trade Bot — RUNNING' : 'Auto Trade Bot — STOPPED'}
+                      </span>
+                      {autoBotActive && botScanning && (
+                        <span className="flex items-center gap-1 text-[10px] font-semibold text-accent-amber px-2 py-0.5 rounded-full bg-accent-amber/10 border border-accent-amber/30">
+                          <RefreshCw className="w-2.5 h-2.5 animate-spin" /> Scanning…
+                        </span>
+                      )}
+                      {autoBotActive && !botScanning && nextCheckIn > 0 && (
+                        <span className="flex items-center gap-1 text-[10px] text-text-secondary/70 px-2 py-0.5 rounded-full bg-surface-secondary/60 border border-border-color/40">
+                          <Timer className="w-2.5 h-2.5" /> Next scan in {nextCheckIn}s
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-text-secondary/60 mt-0.5">
+                      {autoBotActive
+                        ? `Scanning ${defaultExchange} for ${minSignalFilter.replace('_', ' ')} signals · ${minSignalFilter === 'STRONG_BUY' ? 'Only strongest signals' : 'BUY+ signals'}`
+                        : 'Configure settings below and press Start to activate the bot'}
+                    </p>
+                  </div>
+                  {autoBotActive && (
+                    <Radio className="w-4 h-4 text-accent-red animate-pulse flex-shrink-0" />
+                  )}
+                </div>
+
                 <div className="flex items-center gap-2 mb-4">
                   <Bot className="w-4 h-4 text-accent-red" />
                   <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider">Auto Live Trade</h2>
@@ -886,25 +1139,33 @@ export default function LiveTradingPage() {
                     System buys top Opportunity Buy assets on {defaultExchange}
                   </span>
                 </div>
+
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <div className="space-y-4">
+                    {/* How it works */}
                     <div className="rounded-lg bg-accent-red/5 border border-accent-red/20 p-4 space-y-1.5">
                       <div className="flex items-center gap-2 text-accent-red text-xs font-semibold">
-                        <Zap className="w-3.5 h-3.5" /> How Live Auto Trade works
+                        <Zap className="w-3.5 h-3.5" /> How Auto Trade Bot works
                       </div>
                       <ul className="space-y-1 text-[11px] text-text-secondary">
-                        <li className="flex items-start gap-1.5"><ChevronRight className="w-3 h-3 mt-0.5 text-accent-red flex-shrink-0" /> Fetches live Opportunity Buy recommendations (4H)</li>
-                        <li className="flex items-start gap-1.5"><ChevronRight className="w-3 h-3 mt-0.5 text-accent-red flex-shrink-0" /> Cross-checks with AI Prediction &amp; Risk signals</li>
-                        <li className="flex items-start gap-1.5"><ChevronRight className="w-3 h-3 mt-0.5 text-accent-red flex-shrink-0" /> Records trades to the live database on {defaultExchange}</li>
-                        <li className="flex items-start gap-1.5"><ChevronRight className="w-3 h-3 mt-0.5 text-accent-red flex-shrink-0" /> <span className="text-accent-amber font-semibold">Note:</span> actual order placement requires valid CEX API keys</li>
+                        <li className="flex items-start gap-1.5"><ChevronRight className="w-3 h-3 mt-0.5 text-accent-red flex-shrink-0" /> Runs continuously — scans on your chosen interval</li>
+                        <li className="flex items-start gap-1.5"><ChevronRight className="w-3 h-3 mt-0.5 text-accent-red flex-shrink-0" /> Only buys assets with the selected minimum signal strength</li>
+                        <li className="flex items-start gap-1.5"><ChevronRight className="w-3 h-3 mt-0.5 text-accent-red flex-shrink-0" /> Auto-sets <strong className="text-text-primary">Target 1</strong> as exit and system-calculated <strong className="text-text-primary">Stop Loss</strong></li>
+                        <li className="flex items-start gap-1.5"><ChevronRight className="w-3 h-3 mt-0.5 text-accent-red flex-shrink-0" /> Skips assets already in open positions to avoid duplicates</li>
+                        <li className="flex items-start gap-1.5"><ChevronRight className="w-3 h-3 mt-0.5 text-accent-red flex-shrink-0" /> Stops only when you press <strong className="text-text-primary">Stop Auto Trade</strong></li>
+                        <li className="flex items-start gap-1.5"><ChevronRight className="w-3 h-3 mt-0.5 text-accent-red flex-shrink-0" /> <span className="text-accent-amber font-semibold">Note:</span> real orders require valid CEX API keys</li>
                       </ul>
                     </div>
+
+                    {/* Max open trades */}
                     <div>
-                      <label className="block text-xs text-text-secondary mb-1.5">Max trades to open</label>
+                      <label className="block text-xs text-text-secondary mb-1.5">Max simultaneous open trades</label>
                       <div className="flex gap-2">
                         {[1, 2, 3, 5].map(n => (
-                          <button key={n} onClick={() => { setMaxAutoTrades(n); persistSettings({ maxOpenTrades: n }) }}
-                            className={`text-[11px] px-3 py-1.5 rounded-md border font-semibold transition-all ${maxAutoTrades === n ? 'bg-accent-red/20 border-accent-red/50 text-accent-red' : 'bg-surface-secondary/40 border-border-color/50 text-text-secondary hover:border-accent-red/30'}`}>
+                          <button key={n}
+                            disabled={autoBotActive}
+                            onClick={() => { setMaxAutoTrades(n); persistSettings({ maxOpenTrades: n }) }}
+                            className={`text-[11px] px-3 py-1.5 rounded-md border font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed ${maxAutoTrades === n ? 'bg-accent-red/20 border-accent-red/50 text-accent-red' : 'bg-surface-secondary/40 border-border-color/50 text-text-secondary hover:border-accent-red/30'}`}>
                             {n}
                           </button>
                         ))}
@@ -913,11 +1174,71 @@ export default function LiveTradingPage() {
                         Capital/trade: ${formatUSDT(capitalPerTrade)} · Available: ${formatUSDT(availableCapital)}
                       </p>
                     </div>
-                    <button onClick={executeAutoTrades}
-                      disabled={autoRunning || opportunities.length === 0}
-                      className="w-full py-3 rounded-xl bg-gradient-to-r from-accent-red to-accent-orange text-white font-bold text-sm hover:opacity-90 active:scale-95 transition-all shadow-lg shadow-accent-red/20 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
-                      {autoRunning ? <><Square className="w-4 h-4 animate-pulse" /> Running Auto Trade…</> : <><Play className="w-4 h-4" /> Execute Auto Trades</>}
-                    </button>
+
+                    {/* Scan interval */}
+                    <div>
+                      <label className="block text-xs text-text-secondary mb-1.5 flex items-center gap-1.5">
+                        <Timer className="w-3.5 h-3.5" /> Scan interval
+                      </label>
+                      <div className="flex gap-2">
+                        {[{ label: '30s', val: 30 }, { label: '1 min', val: 60 }, { label: '5 min', val: 300 }, { label: '15 min', val: 900 }].map(opt => (
+                          <button key={opt.val}
+                            disabled={autoBotActive}
+                            onClick={() => setScanInterval(opt.val)}
+                            className={`text-[11px] px-3 py-1.5 rounded-md border font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed ${scanInterval === opt.val ? 'bg-accent-blue/20 border-accent-blue/50 text-accent-blue' : 'bg-surface-secondary/40 border-border-color/50 text-text-secondary hover:border-accent-blue/30'}`}>
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Minimum signal strength */}
+                    <div>
+                      <label className="block text-xs text-text-secondary mb-1.5 flex items-center gap-1.5">
+                        <Filter className="w-3.5 h-3.5" /> Minimum signal strength
+                      </label>
+                      <div className="flex gap-2">
+                        <button
+                          disabled={autoBotActive}
+                          onClick={() => setMinSignalFilter('STRONG_BUY')}
+                          className={`text-[11px] px-3 py-1.5 rounded-md border font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed ${minSignalFilter === 'STRONG_BUY' ? 'bg-accent-emerald/20 border-accent-emerald/50 text-accent-emerald' : 'bg-surface-secondary/40 border-border-color/50 text-text-secondary hover:border-accent-emerald/30'}`}>
+                          ⚡ STRONG BUY only
+                        </button>
+                        <button
+                          disabled={autoBotActive}
+                          onClick={() => setMinSignalFilter('BUY')}
+                          className={`text-[11px] px-3 py-1.5 rounded-md border font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed ${minSignalFilter === 'BUY' ? 'bg-accent-blue/20 border-accent-blue/50 text-accent-blue' : 'bg-surface-secondary/40 border-border-color/50 text-text-secondary hover:border-accent-blue/30'}`}>
+                          BUY +
+                        </button>
+                      </div>
+                      <p className="text-[11px] text-text-secondary/60 mt-1">
+                        {minSignalFilter === 'STRONG_BUY' ? 'Bot only acts on the strongest signals.' : 'Bot acts on BUY and STRONG BUY signals.'}
+                      </p>
+                    </div>
+
+                    {/* Start / Stop button */}
+                    {!autoBotActive ? (
+                      <button
+                        disabled={opportunities.length === 0 || availableCapital < capitalPerTrade}
+                        onClick={() => startAutoBot({
+                          exchange: defaultExchange,
+                          capitalPerTrade,
+                          availableCapital,
+                          maxOpenTrades: maxAutoTrades,
+                          minSignal: minSignalFilter,
+                          intervalSec: scanInterval,
+                        })}
+                        className="w-full py-3 rounded-xl bg-gradient-to-r from-accent-red to-accent-orange text-white font-bold text-sm hover:opacity-90 active:scale-95 transition-all shadow-lg shadow-accent-red/20 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                        <Play className="w-4 h-4" /> Start Auto Trade
+                      </button>
+                    ) : (
+                      <button
+                        onClick={stopAutoBot}
+                        className="w-full py-3 rounded-xl bg-gradient-to-r from-slate-600 to-slate-700 text-white font-bold text-sm hover:opacity-90 active:scale-95 transition-all border border-accent-red/40 flex items-center justify-center gap-2">
+                        <StopCircle className="w-4 h-4 text-accent-red" /> Stop Auto Trade
+                      </button>
+                    )}
+
                     {autoLog.length > 0 && (
                       <button onClick={() => { setAutoLog([]); clearLiveAutoLogs() }}
                         className="text-[11px] text-text-secondary/60 hover:text-text-secondary transition-all underline underline-offset-2">
@@ -925,38 +1246,56 @@ export default function LiveTradingPage() {
                       </button>
                     )}
                   </div>
+
                   <div className="space-y-4">
+                    {/* Eligible signals preview */}
                     {opportunities.length > 0 && (
                       <div>
-                        <p className="text-xs text-text-secondary mb-2">Assets that will be auto-bought (top {Math.min(maxAutoTrades, opportunities.length)}):</p>
+                        <p className="text-xs text-text-secondary mb-2">
+                          {minSignalFilter === 'STRONG_BUY' ? 'STRONG BUY' : 'BUY+'} assets eligible for auto-buy (top {Math.min(maxAutoTrades, opportunities.filter(o => minSignalFilter === 'BUY' || o.signalStrength === 'STRONG_BUY').length)}):
+                        </p>
                         <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
-                          {opportunities.slice(0, maxAutoTrades).map((opp, i) => {
-                            const entry = (opp.entryExit.entryLow + opp.entryExit.entryHigh) / 2
-                            return (
-                              <div key={opp.id} className="rounded-lg bg-surface-secondary/40 border border-border-color/40 px-3 py-2.5">
-                                <div className="flex items-center justify-between mb-1">
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-[10px] font-bold text-text-secondary/50">#{i + 1}</span>
-                                    <span className="font-bold text-sm text-text-primary">{opp.asset.symbol}</span>
-                                    <span className="text-xs text-text-secondary">{opp.asset.name}</span>
+                          {opportunities
+                            .filter(o => minSignalFilter === 'BUY' || o.signalStrength === 'STRONG_BUY')
+                            .slice(0, maxAutoTrades)
+                            .map((opp, i) => {
+                              const entry = (opp.entryExit.entryLow + opp.entryExit.entryHigh) / 2
+                              const alreadyOpen = trades.some(t => t.status === 'open' && t.symbol === opp.asset.symbol)
+                              return (
+                                <div key={opp.id} className={`rounded-lg border px-3 py-2.5 ${alreadyOpen ? 'bg-surface-secondary/20 border-border-color/30 opacity-50' : 'bg-surface-secondary/40 border-border-color/40'}`}>
+                                  <div className="flex items-center justify-between mb-1">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-[10px] font-bold text-text-secondary/50">#{i + 1}</span>
+                                      <span className="font-bold text-sm text-text-primary">{opp.asset.symbol}</span>
+                                      <span className="text-xs text-text-secondary">{opp.asset.name}</span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5">
+                                      {alreadyOpen && <span className="text-[9px] font-semibold text-accent-amber px-1.5 py-0.5 rounded bg-accent-amber/10 border border-accent-amber/30">Open</span>}
+                                      <span className={`text-[10px] font-semibold ${opp.signalStrength === 'STRONG_BUY' ? 'text-accent-emerald' : 'text-accent-blue'}`}>
+                                        {opp.signalStrength.replace('_', ' ')}
+                                      </span>
+                                    </div>
                                   </div>
-                                  <span className="text-[10px] text-accent-blue font-semibold">{opp.signalStrength.replace('_', ' ')}</span>
+                                  <div className="grid grid-cols-3 gap-2 text-[11px]">
+                                    <span className="text-text-secondary">Entry: <span className="font-mono text-text-primary">${formatPrice(entry)}</span></span>
+                                    <span className="text-text-secondary">T1: <span className="font-mono text-accent-emerald">${formatPrice(opp.entryExit.target1)}</span></span>
+                                    <span className="text-text-secondary">SL: <span className="font-mono text-accent-red">${formatPrice(opp.entryExit.stopLoss)}</span></span>
+                                  </div>
                                 </div>
-                                <div className="grid grid-cols-3 gap-2 text-[11px]">
-                                  <span className="text-text-secondary">Entry: <span className="font-mono text-text-primary">${formatPrice(entry)}</span></span>
-                                  <span className="text-text-secondary">T1: <span className="font-mono text-accent-emerald">${formatPrice(opp.entryExit.target1)}</span></span>
-                                  <span className="text-text-secondary">SL: <span className="font-mono text-accent-red">${formatPrice(opp.entryExit.stopLoss)}</span></span>
-                                </div>
-                              </div>
-                            )
-                          })}
+                              )
+                            })}
                         </div>
+                        {opportunities.filter(o => minSignalFilter === 'BUY' || o.signalStrength === 'STRONG_BUY').length === 0 && (
+                          <p className="text-[11px] text-text-secondary/60 py-2">No {minSignalFilter.replace('_', ' ')} signals in current data.</p>
+                        )}
                       </div>
                     )}
+
+                    {/* Activity Log */}
                     {autoLog.length > 0 && (
                       <div>
                         <p className="text-xs text-text-secondary mb-2 flex items-center gap-1.5"><Activity className="w-3 h-3" /> Activity Log</p>
-                        <div className="space-y-1 max-h-48 overflow-y-auto pr-1">
+                        <div className="space-y-1 max-h-64 overflow-y-auto pr-1">
                           {autoLog.map(entry => (
                             <div key={entry.id} className={`text-[11px] px-3 py-1.5 rounded-lg border flex items-start gap-2 ${
                               entry.type === 'success' ? 'bg-accent-emerald/5 border-accent-emerald/20 text-accent-emerald' :
