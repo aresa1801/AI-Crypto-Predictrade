@@ -20,13 +20,17 @@ export interface Prediction {
   asset: CryptoAsset
   direction: 'bullish' | 'bearish' | 'neutral'
   confidence: number
-  confidenceLevel?: number
+  confidenceLevel: number
   targetPrice: number
   currentPrice: number
-  expectedValue?: number
-  riskReward?: number
+  predictedPrice: number
+  predictedDirection: 'up' | 'down'
+  expectedValue: number
+  riskReward: number
   timeframe: '1h' | '4h' | '1d' | '1w'
   timestamp: Date
+  createdAt: Date
+  status: 'active' | 'correct' | 'incorrect' | 'expired'
   modelVersion?: string
 }
 

@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useCallback, memo } from 'react'
 import { Prediction } from '@/lib/types'
-import { fetchAIPredictions } from '@/lib/api/predictions'
-import { TrendingUp, TrendingDown, Clock } from 'lucide-react'
+import { fetchAIPredictionsWithMeta } from '@/lib/api/predictions'
+import { TrendingUp, TrendingDown, Clock, AlertTriangle, RefreshCw } from 'lucide-react'
 import { TableSkeleton } from '@/components/skeletons'
 import { ErrorBoundary } from '@/components/error-boundary'
 import { EmptyState } from '@/components/empty-state'
@@ -35,20 +35,21 @@ function RecentPredictionsContent() {
   const [state, setState] = useState<{
     status: 'loading' | 'success' | 'error'
     data: Prediction[] | null
+    stale: boolean
     error: Error | null
-  }>({ status: 'loading', data: null, error: null })
+  }>({ status: 'loading', data: null, stale: false, error: null })
 
   const loadData = useCallback(async () => {
     try {
-      // Fetch real AI predictions from API
-      const predictions = await fetchAIPredictions()
-      setState({ status: 'success', data: predictions, error: null })
+      const { predictions, stale } = await fetchAIPredictionsWithMeta()
+      setState({ status: 'success', data: predictions, stale, error: null })
     } catch (error) {
-      setState({
-        status: 'error',
-        data: null,
+      setState((prev) => ({
+        status: prev.data ? 'success' : 'error',
+        data: prev.data,
+        stale: true,
         error: error instanceof Error ? error : new Error('Failed to load predictions'),
-      })
+      }))
     }
   }, [])
 
@@ -68,12 +69,12 @@ function RecentPredictionsContent() {
   if (state.status === 'error') {
     return (
       <EmptyState
-        icon={<span className="text-3xl">⚠️</span>}
+        icon={<AlertTriangle className="w-8 h-8 text-accent-amber" />}
         title="Failed to Load Predictions"
         description={state.error?.message || 'Unable to fetch prediction data'}
         action={{
           label: 'Retry',
-          onClick: () => window.location.reload(),
+          onClick: loadData,
         }}
       />
     )
@@ -96,6 +97,19 @@ function RecentPredictionsContent() {
           <Clock className="w-5 h-5 text-white" />
         </div>
         <h3 className="text-base lg:text-lg font-semibold gradient-text">Recent Predictions</h3>
+        {state.stale && (
+          <span className="ml-auto flex items-center gap-1 text-xs text-accent-amber px-2 py-0.5 rounded bg-accent-amber/10 border border-accent-amber/30">
+            <AlertTriangle className="w-3 h-3" />
+            Cached data
+          </span>
+        )}
+        <button
+          onClick={loadData}
+          className="ml-auto flex items-center gap-1 text-xs text-text-secondary hover:text-text-primary transition-colors px-2 py-1 rounded hover:bg-surface-secondary/50"
+          title="Refresh"
+        >
+          <RefreshCw className="w-3 h-3" />
+        </button>
       </div>
 
       <div className="overflow-x-auto -mx-4 sm:-mx-0">
