@@ -3,10 +3,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import {
   ShoppingCart, RefreshCw, AlertTriangle, Activity, TrendingUp, Shield,
-  Brain, Zap, Filter, Search, SortAsc, BarChart2, Star, ChevronDown,
+  Brain, Zap, Filter, Search, SortAsc, BarChart2, Star, ChevronDown, Clock,
 } from 'lucide-react'
 import { OpportunityCard } from '@/components/opportunity-buy/opportunity-card'
-import { fetchOpportunityBuys, OpportunityAsset, SignalStrength, RiskLevel } from '@/lib/api/opportunity-buy'
+import { fetchOpportunityBuys, OpportunityAsset, SignalStrength, RiskLevel, Timeframe } from '@/lib/api/opportunity-buy'
 
 type SortKey = 'score' | 'rr' | 'confidence' | 'rsi'
 
@@ -24,6 +24,12 @@ const RISK_LABELS: Record<RiskLevel, string> = {
   Medium: 'Medium Risk',
   High: 'High Risk',
 }
+
+const TIMEFRAME_OPTIONS: { value: Timeframe; label: string; desc: string }[] = [
+  { value: '1h',  label: '1H',  desc: 'Short-term scalp' },
+  { value: '4h',  label: '4H',  desc: 'Intraday swing'   },
+  { value: '24h', label: '24H', desc: 'Daily trend'      },
+]
 
 function StatCard({
   icon: Icon,
@@ -62,6 +68,9 @@ export default function OpportunityBuyPage() {
   const [totalAnalyzed, setTotalAnalyzed] = useState(0)
   const [error, setError] = useState<string | null>(null)
 
+  // Timeframe setting
+  const [timeframe, setTimeframe] = useState<Timeframe>('4h')
+
   // Filters
   const [search, setSearch] = useState('')
   const [signalFilter, setSignalFilter] = useState<SignalStrength | 'ALL'>('ALL')
@@ -69,12 +78,12 @@ export default function OpportunityBuyPage() {
   const [sortKey, setSortKey] = useState<SortKey>('score')
   const [showFilters, setShowFilters] = useState(false)
 
-  const loadData = useCallback(async (isRefresh = false) => {
+  const loadData = useCallback(async (isRefresh = false, tf?: Timeframe) => {
     try {
       if (isRefresh) setRefreshing(true)
       else setLoading(true)
 
-      const result = await fetchOpportunityBuys(isRefresh)
+      const result = await fetchOpportunityBuys(isRefresh, tf)
       setOpportunities(result.opportunities)
       setTotalAnalyzed(result.totalAnalyzed)
       setStale(result.stale)
@@ -89,11 +98,12 @@ export default function OpportunityBuyPage() {
     }
   }, [])
 
+  // Reload whenever timeframe changes (initial load + on change)
   useEffect(() => {
-    loadData()
-    const interval = setInterval(() => loadData(true), AUTO_REFRESH_INTERVAL_MS) // 5 min
+    loadData(false, timeframe)
+    const interval = setInterval(() => loadData(true, timeframe), AUTO_REFRESH_INTERVAL_MS)
     return () => clearInterval(interval)
-  }, [loadData])
+  }, [timeframe, loadData])
 
   // Apply filters & sort
   useEffect(() => {
@@ -166,7 +176,7 @@ export default function OpportunityBuyPage() {
 
           <div className="flex items-center gap-3">
             <button
-              onClick={() => loadData(true)}
+              onClick={() => loadData(true, timeframe)}
               disabled={loading || refreshing}
               className="flex items-center gap-2 px-3 py-2 rounded-lg bg-surface-secondary/50 border border-border-color/50 hover:border-accent-emerald/50 transition-all disabled:opacity-50"
               title="Refresh analysis"
@@ -200,6 +210,36 @@ export default function OpportunityBuyPage() {
             </>
           )}
         </div>
+
+        {/* ---- TIMEFRAME SELECTOR ---- */}
+        <div className="flex items-center gap-3 flex-wrap px-4 py-3 rounded-xl bg-surface-secondary/20 border border-border-color/30">
+          <div className="flex items-center gap-2 text-sm font-medium text-text-primary">
+            <Clock className="w-4 h-4 text-accent-blue" />
+            <span>Time Frame</span>
+          </div>
+          <div className="flex items-center gap-2">
+            {TIMEFRAME_OPTIONS.map(opt => (
+              <button
+                key={opt.value}
+                onClick={() => setTimeframe(opt.value)}
+                disabled={loading}
+                className={`relative px-4 py-1.5 rounded-lg text-sm font-bold transition-all disabled:opacity-50 ${
+                  timeframe === opt.value
+                    ? 'bg-accent-blue text-white shadow-[0_0_14px_rgba(59,130,246,0.45)] border border-accent-blue/80'
+                    : 'bg-surface-secondary/50 text-text-secondary border border-border-color/50 hover:border-accent-blue/50 hover:text-text-primary'
+                }`}
+              >
+                {opt.label}
+                {timeframe === opt.value && (
+                  <span className="absolute -top-1.5 -right-1.5 w-2 h-2 rounded-full bg-accent-emerald shadow-[0_0_6px_rgba(16,185,129,0.8)]" />
+                )}
+              </button>
+            ))}
+          </div>
+          <span className="text-xs text-text-secondary/70 ml-auto hidden sm:block">
+            {TIMEFRAME_OPTIONS.find(o => o.value === timeframe)?.desc}
+          </span>
+        </div>
       </div>
 
       {/* ---- STALE WARNING ---- */}
@@ -207,7 +247,7 @@ export default function OpportunityBuyPage() {
         <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-accent-amber/10 border border-accent-amber/30">
           <AlertTriangle className="w-4 h-4 text-accent-amber flex-shrink-0" />
           <p className="text-sm text-accent-amber">Cached data — live market feed temporarily unavailable.</p>
-          <button onClick={() => loadData(true)} className="ml-auto text-xs text-accent-amber underline hover:no-underline">
+          <button onClick={() => loadData(true, timeframe)} className="ml-auto text-xs text-accent-amber underline hover:no-underline">
             Retry
           </button>
         </div>

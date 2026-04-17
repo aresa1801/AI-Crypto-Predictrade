@@ -18,7 +18,7 @@ import { CryptoAsset } from '../types'
 
 export type SignalStrength = 'STRONG_BUY' | 'BUY' | 'ACCUMULATE'
 export type RiskLevel = 'Low' | 'Medium' | 'High'
-export type Timeframe = '4h' | '1d' | '1w'
+export type Timeframe = '1h' | '4h' | '24h'
 
 export interface EntryExitRange {
   entryLow: number
@@ -143,14 +143,13 @@ function seededRand(seed: number): () => number {
 // freqtrade-inspired: same indicators used in strategy files (RSI, MACD, BB, EMA, ADX)
 // ---------------------------------------------------------------------------
 
-function simulateIndicators(asset: CryptoAsset, seed: number): IndicatorSnapshot {
+function simulateIndicators(asset: CryptoAsset, seed: number, timeframeFactor = 1): IndicatorSnapshot {
   const rand = seededRand(seed)
   const price = asset.price
   const change = asset.change24h
 
-  // RSI simulation: inversely correlated with recent price performance
-  // Oversold (< 30) when price drops significantly
-  const baseRsi = 50 - change * 2.5 + (rand() - 0.5) * 15
+  // RSI simulation: shorter timeframes (factor > 1) are more sensitive / extreme
+  const baseRsi = 50 - change * (2.5 * timeframeFactor) + (rand() - 0.5) * (15 * timeframeFactor)
   const rsi14 = Math.max(10, Math.min(90, baseRsi))
 
   // EMA simulation
@@ -168,9 +167,9 @@ function simulateIndicators(asset: CryptoAsset, seed: number): IndicatorSnapshot
   const bollingerUpper = bollingerMiddle + 2 * stdDev
   const bollingerLower = bollingerMiddle - 2 * stdDev
 
-  // ATR (14-period) — average true range as % of price
+  // ATR (14-period) — average true range as % of price; shorter TF = smaller ATR
   const volatilityFactor = Math.abs(change) / 100 + 0.01
-  const atr14 = price * (volatilityFactor + rand() * 0.02)
+  const atr14 = price * (volatilityFactor + rand() * 0.02) / timeframeFactor
 
   // ADX (14-period) — trend strength 0-100
   const adx14 = 20 + rand() * 50
@@ -484,9 +483,9 @@ function classifyRisk(asset: CryptoAsset, ind: IndicatorSnapshot): RiskLevel {
 }
 
 function classifyTimeframe(score: number, ind: IndicatorSnapshot): Timeframe {
-  if (ind.adx14 > 35 && score > 78) return '1d'
+  if (ind.adx14 > 35 && score > 78) return '1h'
   if (score > 72) return '4h'
-  return '1w'
+  return '24h'
 }
 
 // ---------------------------------------------------------------------------
@@ -500,7 +499,7 @@ export interface OpportunityResult {
   stale: boolean
 }
 
-const OPP_CACHE_KEY = 'opp_buy_data_v2'
+const OPP_CACHE_KEY = 'opp_buy_data_v3'
 const OPP_CACHE_TTL = 5 * 60 * 1000  // 5 minutes
 
 interface OppCacheEntry {
@@ -509,20 +508,20 @@ interface OppCacheEntry {
   totalAnalyzed: number
 }
 
-function readOppCache(): OppCacheEntry | null {
+function readOppCacheByKey(key: string): OppCacheEntry | null {
   try {
     if (typeof window === 'undefined') return null
-    const raw = localStorage.getItem(OPP_CACHE_KEY)
+    const raw = localStorage.getItem(key)
     return raw ? JSON.parse(raw) : null
   } catch {
     return null
   }
 }
 
-function writeOppCache(entry: OppCacheEntry): void {
+function writeOppCacheByKey(key: string, entry: OppCacheEntry): void {
   try {
     if (typeof window !== 'undefined') {
-      localStorage.setItem(OPP_CACHE_KEY, JSON.stringify(entry))
+      localStorage.setItem(key, JSON.stringify(entry))
     }
   } catch {
     // Ignore storage errors
@@ -534,12 +533,17 @@ function writeOppCache(entry: OppCacheEntry): void {
  * Uses hybrid technical + sentiment + ML prediction engine.
  * Never throws — always returns usable data.
  */
-export async function fetchOpportunityBuys(forceRefresh = false): Promise<OpportunityResult> {
+export async function fetchOpportunityBuys(forceRefresh = false, timeframe: Timeframe = '4h'): Promise<OpportunityResult> {
   const now = Date.now()
+  const cacheKey = `${OPP_CACHE_KEY}_${timeframe}`
+
+  // Timeframe factor: 1H is most sensitive, 24H is least sensitive
+  const timeframeFactor: Record<Timeframe, number> = { '1h': 2.5, '4h': 1.0, '24h': 0.4 }
+  const tfFactor = timeframeFactor[timeframe]
 
   // Check cache
   if (!forceRefresh) {
-    const cached = readOppCache()
+    const cached = readOppCacheByKey(cacheKey)
     if (cached && (now - cached.timestamp) < OPP_CACHE_TTL) {
       const restored = cached.data.map(opp => ({
         ...opp,
@@ -565,7 +569,7 @@ export async function fetchOpportunityBuys(forceRefresh = false): Promise<Opport
   }
 
   if (assets.length === 0) {
-    const cached = readOppCache()
+    const cached = readOppCacheByKey(cacheKey)
     if (cached) {
       isStale = true
       assets = cached.data.map(o => o.asset)
@@ -583,7 +587,7 @@ export async function fetchOpportunityBuys(forceRefresh = false): Promise<Opport
     const assetHash = hashString(asset.id)
     const seed = (Math.imul(assetHash, timeSeed + 1) ^ assetHash) >>> 0
 
-    const indicators = simulateIndicators(asset, seed)
+    const indicators = simulateIndicators(asset, seed, tfFactor)
     const technical = scoreTechnical(asset, indicators)
     const sentiment = scoreSentiment(asset, indicators)
     const prediction = scorePrediction(asset, indicators, technical, sentiment)
@@ -637,7 +641,7 @@ export async function fetchOpportunityBuys(forceRefresh = false): Promise<Opport
     timestamp: now,
     totalAnalyzed: assets.length,
   }
-  writeOppCache(entry)
+  writeOppCacheByKey(cacheKey, entry)
 
   return {
     opportunities: analyzed,
