@@ -287,7 +287,7 @@ export default function DemoAccountPage() {
     setTrades(prev => prev.filter(t => t.id !== id))
   }
 
-  async function executeAutoTrades(currentAvailableCapital: number, capitalPerTradeCurrent: number) {
+  async function executeAutoTrades(currentAvailableCapital: number, perTrade: number) {
     if (autoRunning) return
     setAutoRunning(true)
 
@@ -316,15 +316,15 @@ export default function DemoAccountPage() {
     const newTrades: DemoTrade[] = []
 
     for (const opp of candidates) {
-      if (remainingCapital < capitalPerTradeCurrent) {
-        addLog(`Skipped ${opp.asset.symbol}: insufficient available capital ($${formatUSDT(remainingCapital)} < $${formatUSDT(capitalPerTradeCurrent)}).`, 'skip')
+      if (remainingCapital < perTrade) {
+        addLog(`Skipped ${opp.asset.symbol}: insufficient available capital ($${formatUSDT(remainingCapital)} < $${formatUSDT(perTrade)}).`, 'skip')
         continue
       }
 
       const entry = (opp.entryExit.entryLow + opp.entryExit.entryHigh) / 2
       const targetExit = opp.entryExit.target1
       const sl = opp.entryExit.stopLoss
-      const qty = capitalPerTradeCurrent / entry
+      const qty = perTrade / entry
 
       const trade: DemoTrade = {
         id: `auto-${Date.now()}-${Math.random()}`,
@@ -332,7 +332,7 @@ export default function DemoAccountPage() {
         symbol: opp.asset.symbol,
         entryPrice: entry,
         exitPrice: targetExit,
-        capitalUsed: capitalPerTradeCurrent,
+        capitalUsed: perTrade,
         quantity: qty,
         pnl: 0,
         pnlPct: 0,
@@ -345,17 +345,17 @@ export default function DemoAccountPage() {
       }
 
       newTrades.push(trade)
-      remainingCapital -= capitalPerTradeCurrent
+      remainingCapital -= perTrade
       executed++
 
       addLog(
-        `✅ Auto-bought ${opp.asset.symbol} @ $${formatPrice(entry)} | Exit (T1): $${formatPrice(targetExit)} | SL: $${formatPrice(sl)} | Capital: $${formatUSDT(capitalPerTradeCurrent)}`,
+        `✅ Auto-bought ${opp.asset.symbol} @ $${formatPrice(entry)} | Exit (T1): $${formatPrice(targetExit)} | SL: $${formatPrice(sl)} | Capital: $${formatUSDT(perTrade)}`,
         'success',
       )
     }
 
     if (newTrades.length > 0) {
-      setTrades(prev => [...newTrades.reverse(), ...prev])
+      setTrades(prev => [...newTrades].reverse().concat(prev))
     }
 
     if (executed === 0) {
@@ -704,7 +704,7 @@ export default function DemoAccountPage() {
                       onClick={executeBuy}
                       className="w-full py-3 rounded-xl bg-gradient-to-r from-accent-blue to-accent-indigo text-white font-bold text-sm hover:opacity-90 active:scale-95 transition-all shadow-lg shadow-accent-blue/20 flex items-center justify-center gap-2"
                     >
-                      <Plus className="w-4 h-4" /> Execute Manual Trade
+                      <Plus className="w-4 h-4" /> Execute Demo Trade
                     </button>
                   </>
                 )}
