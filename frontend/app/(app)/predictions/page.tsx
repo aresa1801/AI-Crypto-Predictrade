@@ -65,6 +65,7 @@ export default function PredictionsPage() {
               onClick={() => loadPredictions(true)}
               disabled={loading || refreshing}
               className="flex items-center gap-2 px-3 py-2 rounded-lg bg-surface-secondary/50 border border-border-color/50 hover:border-accent-blue/50 transition-all disabled:opacity-50"
+              aria-label="Refresh predictions"
               title="Refresh predictions"
             >
               <RefreshCw className={`w-4 h-4 text-text-secondary ${refreshing ? 'animate-spin' : ''}`} />

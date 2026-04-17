@@ -106,6 +106,7 @@ function RecentPredictionsContent() {
         <button
           onClick={loadData}
           className="ml-auto flex items-center gap-1 text-xs text-text-secondary hover:text-text-primary transition-colors px-2 py-1 rounded hover:bg-surface-secondary/50"
+          aria-label="Refresh predictions"
           title="Refresh"
         >
           <RefreshCw className="w-3 h-3" />

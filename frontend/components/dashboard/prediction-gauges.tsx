@@ -154,6 +154,7 @@ function PredictionGaugesContent() {
         <button
           onClick={loadData}
           className="inline-flex items-center gap-2 px-3 py-1.5 text-xs bg-accent-blue text-white rounded-lg hover:bg-blue-600 transition-colors"
+          aria-label="Retry loading predictions"
         >
           <RefreshCw className="w-3 h-3" />
           Retry

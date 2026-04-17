@@ -71,6 +71,9 @@ async function fetchWithTimeout(url: string, timeout = REQUEST_TIMEOUT_MS): Prom
   }
 }
 
+const RATE_LIMIT_FIRST_DELAY_MS = 10_000  // 10 s pause on first 429 hit
+const RATE_LIMIT_RETRY_DELAY_MS = 30_000  // 30 s pause on subsequent 429 hits
+
 /**
  * Fetch a URL with automatic retries and exponential back-off.
  * 429 (rate-limit) responses trigger a longer pause before retrying.
@@ -81,8 +84,8 @@ async function fetchWithRetry(url: string, maxRetries = MAX_RETRIES): Promise<Re
     try {
       const res = await fetchWithTimeout(url)
       if (res.status === 429) {
-        // Rate-limited – wait 10 s on first hit, 30 s after that
-        const delay = attempt === 0 ? 10_000 : 30_000
+        // Rate-limited – wait longer before retrying
+        const delay = attempt === 0 ? RATE_LIMIT_FIRST_DELAY_MS : RATE_LIMIT_RETRY_DELAY_MS
         await new Promise((r) => setTimeout(r, delay))
         lastError = new Error('CoinGecko rate limit (429)')
         continue
@@ -100,8 +103,9 @@ async function fetchWithRetry(url: string, maxRetries = MAX_RETRIES): Promise<Re
 }
 
 // ---------------------------------------------------------------------------
-// Static fallback data – shown when API is completely unreachable
-// Prices are approximate; they give the UI something to render.
+// Static fallback data – last-resort placeholder shown when both the live API
+// and localStorage cache are unavailable.  Prices are hardcoded approximations
+// and will become stale over time; they exist purely to keep the UI functional.
 // ---------------------------------------------------------------------------
 
 const FALLBACK_ASSETS: CryptoAsset[] = [
