@@ -3,15 +3,16 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Menu, X, TrendingUp, Calculator, RotateCw, Settings, Home, Zap, ShoppingCart } from 'lucide-react'
+import { Menu, X, TrendingUp, Calculator, RotateCw, Settings, Home, Zap, ShoppingCart, FlaskConical } from 'lucide-react'
 
 const navItems = [
-  { href: '/dashboard',       label: 'Dashboard',       icon: Home,        iconColor: 'text-accent-blue',    indicatorColor: 'bg-accent-blue'    },
-  { href: '/predictions',     label: 'AI Signals',      icon: TrendingUp,  iconColor: 'text-accent-cyan',    indicatorColor: 'bg-accent-cyan'    },
-  { href: '/opportunity-buy', label: 'Opportunity Buy', icon: ShoppingCart, iconColor: 'text-accent-emerald', indicatorColor: 'bg-accent-emerald' },
-  { href: '/risk',            label: 'Risk Analysis',   icon: Calculator,  iconColor: 'text-accent-amber',   indicatorColor: 'bg-accent-amber'   },
-  { href: '/backtest',        label: 'Backtest',        icon: RotateCw,    iconColor: 'text-accent-purple',  indicatorColor: 'bg-accent-purple'  },
-  { href: '/settings',        label: 'Settings',        icon: Settings,    iconColor: 'text-accent-teal',    indicatorColor: 'bg-accent-teal'    },
+  { href: '/dashboard',       label: 'Dashboard',       icon: Home,           iconColor: 'text-accent-blue',    indicatorColor: 'bg-accent-blue'    },
+  { href: '/predictions',     label: 'AI Signals',      icon: TrendingUp,     iconColor: 'text-accent-cyan',    indicatorColor: 'bg-accent-cyan'    },
+  { href: '/opportunity-buy', label: 'Opportunity Buy', icon: ShoppingCart,   iconColor: 'text-accent-emerald', indicatorColor: 'bg-accent-emerald' },
+  { href: '/risk',            label: 'Risk Analysis',   icon: Calculator,     iconColor: 'text-accent-amber',   indicatorColor: 'bg-accent-amber'   },
+  { href: '/backtest',        label: 'Backtest',        icon: RotateCw,       iconColor: 'text-accent-purple',  indicatorColor: 'bg-accent-purple'  },
+  { href: '/demo-account',   label: 'Demo Account',    icon: FlaskConical,   iconColor: 'text-accent-indigo',  indicatorColor: 'bg-accent-indigo'  },
+  { href: '/settings',        label: 'Settings',        icon: Settings,       iconColor: 'text-accent-teal',    indicatorColor: 'bg-accent-teal'    },
 ]
 
 export function MobileNav() {
