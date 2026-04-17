@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import {
   FlaskConical, TrendingDown, DollarSign, Percent,
   ShoppingCart, History, Trophy, Target, AlertTriangle, Plus,
@@ -9,6 +9,17 @@ import {
   ChevronRight, Zap,
 } from 'lucide-react'
 import { fetchOpportunityBuys, OpportunityAsset, formatPrice } from '@/lib/api/opportunity-buy'
+import {
+  loadDemoTrades,
+  saveDemoTrade,
+  updateDemoTrade,
+  deleteDemoTrade,
+  loadDemoAccountSettings,
+  saveDemoAccountSettings,
+  loadAutoLogs,
+  saveAutoLog,
+  clearAutoLogs,
+} from '@/lib/api/demo-account'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -144,6 +155,33 @@ export default function DemoAccountPage() {
   const [maxAutoTrades, setMaxAutoTrades] = useState(3)
   const [autoLog, setAutoLog] = useState<AutoTradeLogEntry[]>([])
 
+  // Debounce timer ref for capital settings persistence
+  const settingsSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // ---------------------------------------------------------------------------
+  // Load persisted data from Supabase on mount
+  // ---------------------------------------------------------------------------
+
+  useEffect(() => {
+    async function hydrateFromSupabase() {
+      const [settings, persistedTrades, persistedLogs] = await Promise.all([
+        loadDemoAccountSettings(),
+        loadDemoTrades(),
+        loadAutoLogs(),
+      ])
+      if (settings) {
+        setCapital(settings.capital)
+        setCapitalInput(String(settings.capital))
+        setPctPerTrade(settings.pctPerTrade)
+        setPctInput(String(settings.pctPerTrade))
+      }
+      if (persistedTrades.length > 0) setTrades(persistedTrades)
+      if (persistedLogs.length > 0) setAutoLog(persistedLogs)
+    }
+    hydrateFromSupabase()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // ---------------------------------------------------------------------------
   // Derived stats
   // ---------------------------------------------------------------------------
@@ -225,13 +263,25 @@ export default function DemoAccountPage() {
   function handleCapitalChange(val: string) {
     setCapitalInput(val)
     const n = parseFloat(val)
-    if (!isNaN(n) && n > 0) setCapital(n)
+    if (!isNaN(n) && n > 0) {
+      setCapital(n)
+      if (settingsSaveTimer.current) clearTimeout(settingsSaveTimer.current)
+      settingsSaveTimer.current = setTimeout(() => {
+        saveDemoAccountSettings({ capital: n, pctPerTrade })
+      }, 1000)
+    }
   }
 
   function handlePctChange(val: string) {
     setPctInput(val)
     const n = parseFloat(val)
-    if (!isNaN(n) && n > 0 && n <= 100) setPctPerTrade(n)
+    if (!isNaN(n) && n > 0 && n <= 100) {
+      setPctPerTrade(n)
+      if (settingsSaveTimer.current) clearTimeout(settingsSaveTimer.current)
+      settingsSaveTimer.current = setTimeout(() => {
+        saveDemoAccountSettings({ capital, pctPerTrade: n })
+      }, 1000)
+    }
   }
 
   function tradeStatus(exitPrice: number, entryPrice: number, targetExit: number, stopLoss: number): DemoTrade['status'] {
@@ -269,6 +319,7 @@ export default function DemoAccountPage() {
     }
 
     setTrades(prev => [trade, ...prev])
+    saveDemoTrade(trade)
     setExecError('')
   }
 
@@ -279,12 +330,15 @@ export default function DemoAccountPage() {
       const pnl = (closePrice - t.entryPrice) * t.quantity
       const pnlPct = ((closePrice - t.entryPrice) / t.entryPrice) * 100
       const status = tradeStatus(closePrice, t.entryPrice, t.targetExit, t.stopLoss)
-      return { ...t, exitPrice: closePrice, pnl, pnlPct, status, closedAt: new Date() }
+      const updated = { ...t, exitPrice: closePrice, pnl, pnlPct, status, closedAt: new Date() }
+      updateDemoTrade(id, { pnl, pnlPct, status, exitPrice: closePrice, closedAt: updated.closedAt })
+      return updated
     }))
   }
 
   function removeTrade(id: string) {
     setTrades(prev => prev.filter(t => t.id !== id))
+    deleteDemoTrade(id)
   }
 
   async function executeAutoTrades(currentAvailableCapital: number, perTrade: number) {
@@ -292,10 +346,14 @@ export default function DemoAccountPage() {
     setAutoRunning(true)
 
     const addLog = (message: string, type: AutoTradeLogEntry['type']) => {
-      setAutoLog(prev => [
-        { id: `log-${Date.now()}-${Math.random()}`, timestamp: new Date(), message, type },
-        ...prev,
-      ])
+      const entry: AutoTradeLogEntry = {
+        id: `log-${Date.now()}-${Math.random()}`,
+        timestamp: new Date(),
+        message,
+        type,
+      }
+      setAutoLog(prev => [entry, ...prev])
+      saveAutoLog(entry)
     }
 
     addLog('Auto Trade engine started — fetching latest Opportunity Buy signals…', 'info')
@@ -356,6 +414,7 @@ export default function DemoAccountPage() {
 
     if (newTrades.length > 0) {
       setTrades(prev => [...newTrades].reverse().concat(prev))
+      await Promise.all(newTrades.map(t => saveDemoTrade(t)))
     }
 
     if (executed === 0) {
@@ -502,7 +561,7 @@ export default function DemoAccountPage() {
               {[5, 10, 20, 25, 50].map(p => (
                 <button
                   key={p}
-                  onClick={() => { setPctPerTrade(p); setPctInput(String(p)) }}
+                  onClick={() => { setPctPerTrade(p); setPctInput(String(p)); saveDemoAccountSettings({ capital, pctPerTrade: p }) }}
                   className={`text-[11px] px-2.5 py-1 rounded-md border transition-all ${
                     pctPerTrade === p
                       ? 'bg-accent-blue/20 border-accent-blue/50 text-accent-blue font-semibold'
@@ -779,7 +838,7 @@ export default function DemoAccountPage() {
                 {/* Clear log */}
                 {autoLog.length > 0 && (
                   <button
-                    onClick={() => setAutoLog([])}
+                    onClick={() => { setAutoLog([]); clearAutoLogs() }}
                     className="text-[11px] text-text-secondary/60 hover:text-text-secondary transition-all underline underline-offset-2"
                   >
                     Clear activity log
