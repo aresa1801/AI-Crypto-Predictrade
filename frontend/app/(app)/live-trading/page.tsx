@@ -250,8 +250,9 @@ export default function LiveTradingPage() {
         setServerBotRunning(true)
         setAutoBotActive(true)
         autoBotActiveRef.current = true
-        if (botStatus.min_signal && (botStatus.min_signal === 'STRONG_BUY' || botStatus.min_signal === 'BUY')) {
-          setMinSignalFilter(botStatus.min_signal as 'STRONG_BUY' | 'BUY')
+        const sig = botStatus.min_signal
+        if (sig === 'STRONG_BUY' || sig === 'BUY') {
+          setMinSignalFilter(sig)
         }
         if (botStatus.scan_interval_seconds) setScanInterval(botStatus.scan_interval_seconds)
         if (botStatus.max_auto_trades) setMaxAutoTrades(botStatus.max_auto_trades)

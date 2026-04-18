@@ -84,7 +84,7 @@ async def _persist_settings(session_id: str, enabled: bool, extra: dict | None =
         async with httpx.AsyncClient(timeout=10) as client:
             await client.post(endpoint, json=payload, headers=headers)
     except Exception:
-        pass  # Non-fatal — bot still runs in memory
+        logger.warning("Failed to persist live trading settings for session %s", session_id)
 
 
 # ---------------------------------------------------------------------------

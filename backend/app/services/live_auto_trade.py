@@ -363,7 +363,7 @@ async def _run_cycle(cfg: LiveSessionConfig, supabase_url: str, supabase_key: st
     session_id = cfg.session_id
     now_ts = int(time.time() * 1000)
     # Bucket time into intervals matching the poll interval so scores are stable
-    poll_ms = max(cfg.scan_interval_seconds, 60) * 1000
+    poll_ms = cfg.scan_interval_seconds * 1000
     time_seed = now_ts // poll_ms
 
     async def _log(message: str, log_type: str, exchange: Optional[str] = None,

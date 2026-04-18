@@ -173,8 +173,18 @@ GRANT EXECUTE ON FUNCTION execute_sql(TEXT) TO authenticated;
 -- Run these ALTER statements if you already applied the original schema.
 -- ---------------------------------------------------------------------------
 ALTER TABLE live_trading_settings
-  ADD COLUMN IF NOT EXISTS min_signal_filter     TEXT    NOT NULL DEFAULT 'STRONG_BUY',
-  ADD COLUMN IF NOT EXISTS scan_interval_seconds INTEGER NOT NULL DEFAULT 60;
+  ADD COLUMN IF NOT EXISTS min_signal_filter     TEXT    DEFAULT 'STRONG_BUY',
+  ADD COLUMN IF NOT EXISTS scan_interval_seconds INTEGER DEFAULT 60;
+
+-- Backfill NULLs (rows created before this migration) then enforce NOT NULL.
+UPDATE live_trading_settings
+  SET min_signal_filter     = 'STRONG_BUY' WHERE min_signal_filter     IS NULL;
+UPDATE live_trading_settings
+  SET scan_interval_seconds = 60            WHERE scan_interval_seconds IS NULL;
+
+ALTER TABLE live_trading_settings
+  ALTER COLUMN min_signal_filter     SET NOT NULL,
+  ALTER COLUMN scan_interval_seconds SET NOT NULL;
 
 -- Add the check constraint only if it does not yet exist (safe to re-run).
 DO $$
