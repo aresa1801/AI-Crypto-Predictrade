@@ -12,6 +12,14 @@
 import { supabase, isSupabaseConfigured } from '@/lib/supabase'
 
 // ---------------------------------------------------------------------------
+// Backend API base URL
+// ---------------------------------------------------------------------------
+
+function getBackendUrl(): string {
+  return process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000'
+}
+
+// ---------------------------------------------------------------------------
 // Session management (shared key with demo to keep same user identity)
 // ---------------------------------------------------------------------------
 
@@ -305,6 +313,76 @@ export async function clearLiveAutoLogs(): Promise<void> {
   if (!isSupabaseConfigured()) return
   const sessionId = getLiveSessionId()
   await supabase.from('live_auto_logs').delete().eq('session_id', sessionId)
+}
+
+// ---------------------------------------------------------------------------
+// Server-side Live Auto Trade Bot API
+// ---------------------------------------------------------------------------
+
+export interface LiveBotStatus {
+  session_id: string
+  is_running: boolean
+  started_at: string | null
+  capital: number | null
+  pct_per_trade: number | null
+  max_auto_trades: number | null
+  exchange: string | null
+  min_signal: string | null
+  scan_interval_seconds: number | null
+}
+
+export interface LiveBotStartParams {
+  capital: number
+  pct_per_trade: number
+  max_auto_trades: number
+  exchange: string
+  min_signal: 'STRONG_BUY' | 'BUY'
+  scan_interval_seconds: number
+}
+
+/** Start the server-side live auto-trade bot. */
+export async function startLiveServerBot(params: LiveBotStartParams): Promise<{ success: boolean; message: string }> {
+  const session_id = getLiveSessionId()
+  try {
+    const res = await fetch(`${getBackendUrl()}/api/v1/live/start`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session_id, ...params }),
+    })
+    const data = await res.json()
+    return { success: data.success ?? res.ok, message: data.message ?? '' }
+  } catch (e) {
+    return { success: false, message: e instanceof Error ? e.message : 'Network error' }
+  }
+}
+
+/** Stop the server-side live auto-trade bot. */
+export async function stopLiveServerBot(): Promise<{ success: boolean; message: string }> {
+  const session_id = getLiveSessionId()
+  try {
+    const res = await fetch(`${getBackendUrl()}/api/v1/live/stop`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session_id }),
+    })
+    const data = await res.json()
+    return { success: data.success ?? res.ok, message: data.message ?? '' }
+  } catch (e) {
+    return { success: false, message: e instanceof Error ? e.message : 'Network error' }
+  }
+}
+
+/** Get the current server-side bot status for this session. */
+export async function getLiveServerBotStatus(): Promise<LiveBotStatus | null> {
+  const session_id = getLiveSessionId()
+  if (!session_id) return null
+  try {
+    const res = await fetch(`${getBackendUrl()}/api/v1/live/status/${session_id}`)
+    if (!res.ok) return null
+    return await res.json() as LiveBotStatus
+  } catch {
+    return null
+  }
 }
 
 // ---------------------------------------------------------------------------

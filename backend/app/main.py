@@ -20,6 +20,7 @@ from app.api.routes import (
     risk_router,
     websocket_router,
     demo_auto_trade_router,
+    live_auto_trade_router,
 )
 
 # Configure logging
@@ -48,8 +49,15 @@ async def lifespan(app: FastAPI):
     # await init_redis()
 
     # Resume any demo auto-trade sessions that were active before a restart
-    from app.services.demo_auto_trade import resume_active_sessions
-    await resume_active_sessions(
+    from app.services.demo_auto_trade import resume_active_sessions as resume_demo
+    await resume_demo(
+        settings.supabase_url,
+        settings.supabase_service_key.get_secret_value(),
+    )
+
+    # Resume any live auto-trade sessions that were active before a restart
+    from app.services.live_auto_trade import resume_active_sessions as resume_live
+    await resume_live(
         settings.supabase_url,
         settings.supabase_service_key.get_secret_value(),
     )
@@ -123,6 +131,7 @@ app.include_router(market_router, prefix=f"/api/{settings.api_version}")
 app.include_router(risk_router, prefix=f"/api/{settings.api_version}")
 app.include_router(websocket_router, prefix=f"/api/{settings.api_version}")
 app.include_router(demo_auto_trade_router, prefix=f"/api/{settings.api_version}")
+app.include_router(live_auto_trade_router, prefix=f"/api/{settings.api_version}")
 
 
 # Health check endpoint
