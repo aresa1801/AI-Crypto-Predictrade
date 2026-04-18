@@ -150,6 +150,10 @@ class AppSettings(BaseSettings):
         description="Allowed CORS origins"
     )
     
+    # Supabase
+    supabase_url: str = Field(default="", description="Supabase project URL")
+    supabase_service_key: SecretStr = Field(default=SecretStr(""), description="Supabase service role key")
+    
     # Sub-settings
     database: DatabaseSettings = Field(default_factory=DatabaseSettings)
     redis: RedisSettings = Field(default_factory=RedisSettings)
