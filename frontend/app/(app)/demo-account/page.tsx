@@ -6,7 +6,7 @@ import {
   ShoppingCart, History, Trophy, Target, AlertTriangle, Plus,
   CheckCircle2, XCircle, Clock, RefreshCw, Wallet, BarChart2,
   ArrowUpRight, ArrowDownRight, X, Bot, Play, Square, Activity,
-  ChevronRight, Zap,
+  ChevronRight, Zap, Settings,
 } from 'lucide-react'
 import { fetchOpportunityBuys, OpportunityAsset, formatPrice } from '@/lib/api/opportunity-buy'
 import {
@@ -677,7 +677,7 @@ export default function DemoAccountPage() {
           <button
             onClick={saveSettingsNow}
             className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent-blue/20 border border-accent-blue/50 text-accent-blue text-xs font-semibold hover:bg-accent-blue/30 transition-all">
-            {settingsSaved ? <CheckCircle2 className="w-3.5 h-3.5" /> : <DollarSign className="w-3.5 h-3.5" />}
+            {settingsSaved ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Settings className="w-3.5 h-3.5" />}
             {settingsSaved ? 'Saved!' : 'Save Settings'}
           </button>
           {settingsSaved && <span className="text-[11px] text-accent-emerald">Settings saved to database.</span>}
