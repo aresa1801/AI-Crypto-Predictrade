@@ -190,6 +190,9 @@ export default function LiveTradingPage() {
   const [serverBotRunning, setServerBotRunning] = useState(false)
   const [serverBotError, setServerBotError] = useState('')
 
+  // Save confirmation
+  const [settingsSaved, setSettingsSaved] = useState(false)
+
   // API Keys
   const [apiKeys, setApiKeys] = useState<LiveApiKey[]>([])
   const [showAddKey, setShowAddKey] = useState(false)
@@ -240,6 +243,8 @@ export default function LiveTradingPage() {
         setDefaultExchange(settings.defaultExchange)
         setRiskLevel(settings.riskLevel)
         setMaxAutoTrades(settings.maxOpenTrades)
+        setScanInterval(settings.scanIntervalSeconds)
+        setMinSignalFilter(settings.minSignalFilter)
       }
       if (persistedTrades.length > 0) setTrades(persistedTrades)
       if (persistedLogs.length > 0) setAutoLog(persistedLogs)
@@ -384,9 +389,27 @@ export default function LiveTradingPage() {
         riskLevel,
         enableAutoTrade: false,
         maxOpenTrades: maxAutoTrades,
+        scanIntervalSeconds: scanInterval,
+        minSignalFilter,
         ...overrides,
       })
     }, 1000)
+  }
+
+  function saveSettingsNow() {
+    if (settingsSaveTimer.current) clearTimeout(settingsSaveTimer.current)
+    saveLiveTradingSettings({
+      capital,
+      pctPerTrade,
+      defaultExchange,
+      riskLevel,
+      enableAutoTrade: false,
+      maxOpenTrades: maxAutoTrades,
+      scanIntervalSeconds: scanInterval,
+      minSignalFilter,
+    })
+    setSettingsSaved(true)
+    setTimeout(() => setSettingsSaved(false), 2000)
   }
 
   function handleCapitalChange(val: string) {
@@ -1022,6 +1045,15 @@ export default function LiveTradingPage() {
                 </div>
               </div>
             </div>
+            <div className="mt-4 flex items-center gap-3">
+              <button
+                onClick={saveSettingsNow}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent-blue/20 border border-accent-blue/50 text-accent-blue text-xs font-semibold hover:bg-accent-blue/30 transition-all">
+                {settingsSaved ? <Check className="w-3.5 h-3.5" /> : <Settings className="w-3.5 h-3.5" />}
+                {settingsSaved ? 'Saved!' : 'Save Settings'}
+              </button>
+              {settingsSaved && <span className="text-[11px] text-accent-emerald">Settings saved to database.</span>}
+            </div>
           </section>
 
           {/* Trade Mode */}
@@ -1285,7 +1317,7 @@ export default function LiveTradingPage() {
                         {[{ label: '30s', val: 30 }, { label: '1 min', val: 60 }, { label: '5 min', val: 300 }, { label: '15 min', val: 900 }].map(opt => (
                           <button key={opt.val}
                             disabled={autoBotActive}
-                            onClick={() => setScanInterval(opt.val)}
+                            onClick={() => { setScanInterval(opt.val); persistSettings({ scanIntervalSeconds: opt.val }) }}
                             className={`text-[11px] px-3 py-1.5 rounded-md border font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed ${scanInterval === opt.val ? 'bg-accent-blue/20 border-accent-blue/50 text-accent-blue' : 'bg-surface-secondary/40 border-border-color/50 text-text-secondary hover:border-accent-blue/30'}`}>
                             {opt.label}
                           </button>
@@ -1301,13 +1333,13 @@ export default function LiveTradingPage() {
                       <div className="flex gap-2">
                         <button
                           disabled={autoBotActive}
-                          onClick={() => setMinSignalFilter('STRONG_BUY')}
+                          onClick={() => { setMinSignalFilter('STRONG_BUY'); persistSettings({ minSignalFilter: 'STRONG_BUY' }) }}
                           className={`text-[11px] px-3 py-1.5 rounded-md border font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed ${minSignalFilter === 'STRONG_BUY' ? 'bg-accent-emerald/20 border-accent-emerald/50 text-accent-emerald' : 'bg-surface-secondary/40 border-border-color/50 text-text-secondary hover:border-accent-emerald/30'}`}>
                           ⚡ STRONG BUY only
                         </button>
                         <button
                           disabled={autoBotActive}
-                          onClick={() => setMinSignalFilter('BUY')}
+                          onClick={() => { setMinSignalFilter('BUY'); persistSettings({ minSignalFilter: 'BUY' }) }}
                           className={`text-[11px] px-3 py-1.5 rounded-md border font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed ${minSignalFilter === 'BUY' ? 'bg-accent-blue/20 border-accent-blue/50 text-accent-blue' : 'bg-surface-secondary/40 border-border-color/50 text-text-secondary hover:border-accent-blue/30'}`}>
                           BUY +
                         </button>

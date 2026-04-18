@@ -162,6 +162,9 @@ export default function DemoAccountPage() {
   const [nextScanAt, setNextScanAt] = useState<Date | null>(null)
   const [serverBotRunning, setServerBotRunning] = useState(false)
 
+  // Save confirmation
+  const [settingsSaved, setSettingsSaved] = useState(false)
+
   // Debounce timer ref for capital settings persistence
   const settingsSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -187,6 +190,7 @@ export default function DemoAccountPage() {
         setCapitalInput(String(settings.capital))
         setPctPerTrade(settings.pctPerTrade)
         setPctInput(String(settings.pctPerTrade))
+        if (settings.maxAutoTrades) setMaxAutoTrades(settings.maxAutoTrades)
       }
       if (persistedTrades.length > 0) setTrades(persistedTrades)
       if (persistedLogs.length > 0) setAutoLog(persistedLogs)
@@ -295,7 +299,7 @@ export default function DemoAccountPage() {
       setCapital(n)
       if (settingsSaveTimer.current) clearTimeout(settingsSaveTimer.current)
       settingsSaveTimer.current = setTimeout(() => {
-        saveDemoAccountSettings({ capital: n, pctPerTrade })
+        saveDemoAccountSettings({ capital: n, pctPerTrade, maxAutoTrades })
       }, 1000)
     }
   }
@@ -307,9 +311,16 @@ export default function DemoAccountPage() {
       setPctPerTrade(n)
       if (settingsSaveTimer.current) clearTimeout(settingsSaveTimer.current)
       settingsSaveTimer.current = setTimeout(() => {
-        saveDemoAccountSettings({ capital, pctPerTrade: n })
+        saveDemoAccountSettings({ capital, pctPerTrade: n, maxAutoTrades })
       }, 1000)
     }
+  }
+
+  function saveSettingsNow() {
+    if (settingsSaveTimer.current) clearTimeout(settingsSaveTimer.current)
+    saveDemoAccountSettings({ capital, pctPerTrade, maxAutoTrades })
+    setSettingsSaved(true)
+    setTimeout(() => setSettingsSaved(false), 2000)
   }
 
   function tradeStatus(exitPrice: number, entryPrice: number, targetExit: number, stopLoss: number): DemoTrade['status'] {
@@ -649,7 +660,7 @@ export default function DemoAccountPage() {
               {[5, 10, 20, 25, 50].map(p => (
                 <button
                   key={p}
-                  onClick={() => { setPctPerTrade(p); setPctInput(String(p)); saveDemoAccountSettings({ capital, pctPerTrade: p }) }}
+                  onClick={() => { setPctPerTrade(p); setPctInput(String(p)); saveDemoAccountSettings({ capital, pctPerTrade: p, maxAutoTrades }) }}
                   className={`text-[11px] px-2.5 py-1 rounded-md border transition-all ${
                     pctPerTrade === p
                       ? 'bg-accent-blue/20 border-accent-blue/50 text-accent-blue font-semibold'
@@ -661,6 +672,15 @@ export default function DemoAccountPage() {
               ))}
             </div>
           </div>
+        </div>
+        <div className="mt-4 flex items-center gap-3">
+          <button
+            onClick={saveSettingsNow}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent-blue/20 border border-accent-blue/50 text-accent-blue text-xs font-semibold hover:bg-accent-blue/30 transition-all">
+            {settingsSaved ? <CheckCircle2 className="w-3.5 h-3.5" /> : <DollarSign className="w-3.5 h-3.5" />}
+            {settingsSaved ? 'Saved!' : 'Save Settings'}
+          </button>
+          {settingsSaved && <span className="text-[11px] text-accent-emerald">Settings saved to database.</span>}
         </div>
       </section>
 
@@ -906,7 +926,7 @@ export default function DemoAccountPage() {
                     {[1, 2, 3, 5].map(n => (
                       <button
                         key={n}
-                        onClick={() => setMaxAutoTrades(n)}
+                        onClick={() => { setMaxAutoTrades(n); saveDemoAccountSettings({ capital, pctPerTrade, maxAutoTrades: n }) }}
                         className={`text-[11px] px-3 py-1.5 rounded-md border transition-all font-semibold ${
                           maxAutoTrades === n
                             ? 'bg-accent-emerald/20 border-accent-emerald/50 text-accent-emerald'

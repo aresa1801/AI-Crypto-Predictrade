@@ -34,6 +34,7 @@ export function getSessionId(): string {
 export interface DemoAccountSettings {
   capital: number
   pctPerTrade: number
+  maxAutoTrades: number
 }
 
 /** Upsert capital settings for the current session. */
@@ -45,6 +46,7 @@ export async function saveDemoAccountSettings(settings: DemoAccountSettings): Pr
       session_id: sessionId,
       capital: settings.capital,
       pct_per_trade: settings.pctPerTrade,
+      max_auto_trades: settings.maxAutoTrades,
     },
     { onConflict: 'session_id' },
   )
@@ -56,13 +58,14 @@ export async function loadDemoAccountSettings(): Promise<DemoAccountSettings | n
   const sessionId = getSessionId()
   const { data, error } = await supabase
     .from('demo_accounts')
-    .select('capital, pct_per_trade')
+    .select('capital, pct_per_trade, max_auto_trades')
     .eq('session_id', sessionId)
     .single()
   if (error || !data) return null
   return {
     capital: Number(data.capital),
     pctPerTrade: Number(data.pct_per_trade),
+    maxAutoTrades: Number(data.max_auto_trades ?? 3),
   }
 }
 
