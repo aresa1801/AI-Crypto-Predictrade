@@ -72,7 +72,7 @@ def _lcg_factory(seed: int):
         s = state[0]
         s = ((1664525 * s + 1013904223) & 0xFFFFFFFF)
         state[0] = s
-        return s / 0xFFFFFFFF
+        return s / 0x100000000  # divide by 2^32 to get [0, 1)
 
     return _next
 
@@ -299,14 +299,14 @@ def _supabase_headers(service_key: str) -> dict:
     }
 
 
-async def _supabase_upsert(url: str, key: str, table: str, rows: list[dict]) -> None:
+async def _supabase_upsert(url: str, key: str, table: str, records: list[dict]) -> None:
     if not url or not key:
         return
     endpoint = f"{url}/rest/v1/{table}"
     headers = {**_supabase_headers(key), "Prefer": "resolution=merge-duplicates,return=minimal"}
     try:
         async with httpx.AsyncClient(timeout=10) as client:
-            await client.post(endpoint, json=rows, headers=headers)
+            await client.post(endpoint, json=records, headers=headers)
     except Exception as exc:
         logger.warning("Supabase upsert(%s) failed: %s", table, exc)
 
