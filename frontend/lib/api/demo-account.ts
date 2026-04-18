@@ -35,6 +35,9 @@ export interface DemoAccountSettings {
   capital: number
   pctPerTrade: number
   maxAutoTrades: number
+  riskLevel: 'low' | 'medium' | 'high'
+  scanIntervalSeconds: number
+  minSignalFilter: 'STRONG_BUY' | 'BUY'
 }
 
 /** Upsert capital settings for the current session. */
@@ -47,6 +50,9 @@ export async function saveDemoAccountSettings(settings: DemoAccountSettings): Pr
       capital: settings.capital,
       pct_per_trade: settings.pctPerTrade,
       max_auto_trades: settings.maxAutoTrades,
+      risk_level: settings.riskLevel,
+      scan_interval_seconds: settings.scanIntervalSeconds,
+      min_signal_filter: settings.minSignalFilter,
     },
     { onConflict: 'session_id' },
   )
@@ -58,7 +64,7 @@ export async function loadDemoAccountSettings(): Promise<DemoAccountSettings | n
   const sessionId = getSessionId()
   const { data, error } = await supabase
     .from('demo_accounts')
-    .select('capital, pct_per_trade, max_auto_trades')
+    .select('capital, pct_per_trade, max_auto_trades, risk_level, scan_interval_seconds, min_signal_filter')
     .eq('session_id', sessionId)
     .single()
   if (error || !data) return null
@@ -66,6 +72,9 @@ export async function loadDemoAccountSettings(): Promise<DemoAccountSettings | n
     capital: Number(data.capital),
     pctPerTrade: Number(data.pct_per_trade),
     maxAutoTrades: Number(data.max_auto_trades ?? 3),
+    riskLevel: (data.risk_level ?? 'medium') as 'low' | 'medium' | 'high',
+    scanIntervalSeconds: Number(data.scan_interval_seconds ?? 300),
+    minSignalFilter: (data.min_signal_filter ?? 'STRONG_BUY') as 'STRONG_BUY' | 'BUY',
   }
 }
 
