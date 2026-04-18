@@ -11,7 +11,6 @@ const MarketSnapshot = lazy(() => import('@/components/dashboard/market-snapshot
 const PredictionGauges = lazy(() => import('@/components/dashboard/prediction-gauges').then(m => ({ default: m.PredictionGauges })))
 const RecentPredictions = lazy(() => import('@/components/dashboard/recent-predictions').then(m => ({ default: m.RecentPredictions })))
 const SpotPortfolio = lazy(() => import('@/components/dashboard/spot-portfolio').then(m => ({ default: m.SpotPortfolio })))
-const CexApiSettings = lazy(() => import('@/components/dashboard/cex-api-settings').then(m => ({ default: m.CexApiSettings })))
 const PredictionMarkets = lazy(() => import('@/components/dashboard/prediction-markets').then(m => ({ default: m.PredictionMarkets })))
 
 interface KpiData {
@@ -133,18 +132,11 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Top Row - Market Snapshot & Order Form */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
-        <div className="lg:col-span-1">
-          <Suspense fallback={<CardSkeleton />}>
-            <MarketSnapshot loading={loading} />
-          </Suspense>
-        </div>
-        <div className="lg:col-span-2">
-          <Suspense fallback={<CardSkeleton />}>
-            <CexApiSettings />
-          </Suspense>
-        </div>
+      {/* Market Overview - Full Width */}
+      <div>
+        <Suspense fallback={<CardSkeleton />}>
+          <MarketSnapshot loading={loading} />
+        </Suspense>
       </div>
 
       {/* Middle Row - Spot Portfolio */}

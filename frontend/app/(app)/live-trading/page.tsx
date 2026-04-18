@@ -6,8 +6,8 @@ import {
   ShoppingCart, History, Trophy, Target, AlertTriangle, Plus,
   CheckCircle2, XCircle, Clock, RefreshCw, Wallet, BarChart2,
   ArrowUpRight, ArrowDownRight, X, Bot, Play, Square, Activity,
-  ChevronRight, Zap, Key, Eye, EyeOff, Trash2, Database,
-  Terminal, Copy, Check, Shield, AlertCircle, Settings, StopCircle,
+  ChevronRight, Zap, Key, Eye, EyeOff, Trash2,
+  Shield, AlertCircle, Settings, StopCircle,
   Radio, Timer, Filter,
 } from 'lucide-react'
 import { fetchOpportunityBuys, OpportunityAsset, formatPrice } from '@/lib/api/opportunity-buy'
@@ -26,7 +26,6 @@ import {
   loadLiveApiKeys,
   saveLiveApiKey,
   deleteLiveApiKey,
-  executeLiveSql,
   startLiveServerBot,
   stopLiveServerBot,
   getLiveServerBotStatus,
@@ -50,33 +49,6 @@ const CEX_LIST = [
   { id: 'gateio',   name: 'Gate.io',  logo: '🔴', color: 'from-red-500/20 to-red-400/10 border-red-500/30 text-red-400',             needsPassphrase: false },
   { id: 'mexc',     name: 'MEXC',     logo: '🔷', color: 'from-cyan-500/20 to-cyan-400/10 border-cyan-500/30 text-cyan-400',         needsPassphrase: false },
   { id: 'bitget',   name: 'Bitget',   logo: '🟦', color: 'from-indigo-500/20 to-indigo-400/10 border-indigo-500/30 text-indigo-400', needsPassphrase: true  },
-]
-
-const SQL_EXAMPLES = [
-  {
-    label: 'All Live Trades',
-    sql: 'SELECT id, exchange, symbol, status, entry_price, exit_price, pnl, pnl_pct, opened_at FROM live_trades ORDER BY opened_at DESC LIMIT 50',
-  },
-  {
-    label: 'Open Trades',
-    sql: "SELECT id, exchange, symbol, capital_used, quantity, target_exit, stop_loss, opened_at FROM live_trades WHERE status = 'open' ORDER BY opened_at DESC",
-  },
-  {
-    label: 'PnL Summary',
-    sql: "SELECT exchange, COUNT(*) AS trades, SUM(pnl) AS total_pnl, AVG(pnl_pct) AS avg_pnl_pct FROM live_trades WHERE status != 'open' GROUP BY exchange ORDER BY total_pnl DESC",
-  },
-  {
-    label: 'API Keys',
-    sql: "SELECT id, exchange, label, is_active, created_at FROM live_api_keys ORDER BY created_at DESC",
-  },
-  {
-    label: 'Recent Logs',
-    sql: "SELECT created_at, log_type, exchange, symbol, message FROM live_auto_logs ORDER BY created_at DESC LIMIT 100",
-  },
-  {
-    label: 'Win/Loss by Exchange',
-    sql: "SELECT exchange, COUNT(*) FILTER (WHERE status = 'closed_tp') AS wins, COUNT(*) FILTER (WHERE status = 'closed_sl') AS losses FROM live_trades GROUP BY exchange",
-  },
 ]
 
 // ---------------------------------------------------------------------------
@@ -137,7 +109,7 @@ function WinRateRing({ rate }: { rate: number }) {
 // ---------------------------------------------------------------------------
 // Tab definitions
 // ---------------------------------------------------------------------------
-type Tab = 'trading' | 'api-keys' | 'sql-editor'
+type Tab = 'trading' | 'api-keys'
 
 // ---------------------------------------------------------------------------
 // Main Page
@@ -201,13 +173,6 @@ export default function LiveTradingPage() {
   const [showNewSecret, setShowNewSecret] = useState(false)
   const [showNewPassphrase, setShowNewPassphrase] = useState(false)
   const [keyVisibility, setKeyVisibility] = useState<Record<string, boolean>>({})
-
-  // SQL Editor
-  const [sqlQuery, setSqlQuery] = useState(SQL_EXAMPLES[0].sql)
-  const [sqlResult, setSqlResult] = useState<{ columns: string[]; rows: Record<string, unknown>[] } | null>(null)
-  const [sqlError, setSqlError] = useState('')
-  const [sqlRunning, setSqlRunning] = useState(false)
-  const [sqlCopied, setSqlCopied] = useState(false)
 
   const settingsSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const autoBotIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -799,36 +764,11 @@ export default function LiveTradingPage() {
   }
 
   // ---------------------------------------------------------------------------
-  // SQL Editor
-  // ---------------------------------------------------------------------------
-  async function runSql() {
-    if (!sqlQuery.trim()) return
-    setSqlRunning(true)
-    setSqlError('')
-    setSqlResult(null)
-    const result = await executeLiveSql(sqlQuery)
-    if ('error' in result) {
-      setSqlError(result.error)
-    } else {
-      setSqlResult(result)
-    }
-    setSqlRunning(false)
-  }
-
-  function copySql() {
-    navigator.clipboard.writeText(sqlQuery).then(() => {
-      setSqlCopied(true)
-      setTimeout(() => setSqlCopied(false), 1500)
-    })
-  }
-
-  // ---------------------------------------------------------------------------
   // Tab bar
   // ---------------------------------------------------------------------------
   const tabs: { id: Tab; label: string; icon: React.ElementType }[] = [
     { id: 'trading',    label: 'Live Trading',  icon: Rocket   },
     { id: 'api-keys',   label: 'API Keys',      icon: Key      },
-    { id: 'sql-editor', label: 'SQL Editor',    icon: Database },
   ]
 
   // ---------------------------------------------------------------------------
@@ -1652,177 +1592,6 @@ export default function LiveTradingPage() {
               })}
             </div>
           )}
-        </div>
-      )}
-
-      {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-      {/* TAB: SQL EDITOR                                                         */}
-      {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-      {activeTab === 'sql-editor' && (
-        <div className="space-y-6">
-          <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-surface-secondary/50 border border-border-color/40">
-            <Database className="w-5 h-5 text-accent-purple flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm font-semibold text-text-primary">Live Trading SQL Editor</p>
-              <p className="text-xs text-text-secondary mt-0.5">
-                Run <strong>SELECT</strong> queries against the live trading database tables:
-                <code className="ml-1 px-1.5 py-0.5 rounded bg-surface-secondary text-accent-blue text-[10px] font-mono">live_trades</code>
-                <code className="ml-1 px-1.5 py-0.5 rounded bg-surface-secondary text-accent-blue text-[10px] font-mono">live_api_keys</code>
-                <code className="ml-1 px-1.5 py-0.5 rounded bg-surface-secondary text-accent-blue text-[10px] font-mono">live_trading_settings</code>
-                <code className="ml-1 px-1.5 py-0.5 rounded bg-surface-secondary text-accent-blue text-[10px] font-mono">live_auto_logs</code>
-              </p>
-              <p className="text-xs text-text-secondary/60 mt-1">
-                Requires the <code className="font-mono text-[10px]">execute_sql</code> RPC function from <code className="font-mono text-[10px]">live_trading_schema.sql</code>.
-                Only SELECT statements are permitted.
-              </p>
-            </div>
-          </div>
-
-          {/* Example Queries */}
-          <div>
-            <p className="text-xs text-text-secondary uppercase tracking-wider mb-2 font-semibold">Example Queries</p>
-            <div className="flex flex-wrap gap-2">
-              {SQL_EXAMPLES.map(ex => (
-                <button key={ex.label} onClick={() => setSqlQuery(ex.sql)}
-                  className="text-[11px] px-3 py-1.5 rounded-lg bg-surface-secondary/50 border border-border-color/40 text-text-secondary hover:text-accent-purple hover:border-accent-purple/30 transition-all">
-                  {ex.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Editor */}
-          <div className="rounded-xl border border-border-color/60 overflow-hidden">
-            {/* Toolbar */}
-            <div className="flex items-center gap-2 px-4 py-2.5 bg-surface-secondary/60 border-b border-border-color/40">
-              <Terminal className="w-4 h-4 text-accent-purple" />
-              <span className="text-xs font-semibold text-text-secondary uppercase tracking-wider">SQL Query</span>
-              <div className="ml-auto flex items-center gap-2">
-                <button onClick={copySql} className="flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded bg-surface-secondary border border-border-color/50 text-text-secondary hover:text-text-primary transition-all">
-                  {sqlCopied ? <Check className="w-3 h-3 text-accent-emerald" /> : <Copy className="w-3 h-3" />}
-                  {sqlCopied ? 'Copied' : 'Copy'}
-                </button>
-                <button onClick={() => setSqlQuery('')} className="text-[11px] px-2.5 py-1 rounded bg-surface-secondary border border-border-color/50 text-text-secondary hover:text-accent-red transition-all">Clear</button>
-                <button onClick={runSql} disabled={sqlRunning || !sqlQuery.trim()}
-                  className="flex items-center gap-1.5 text-[11px] px-3 py-1 rounded bg-accent-purple/20 border border-accent-purple/40 text-accent-purple font-semibold hover:bg-accent-purple/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-                  {sqlRunning ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />}
-                  {sqlRunning ? 'Running…' : 'Run Query'}
-                </button>
-              </div>
-            </div>
-            {/* Textarea */}
-            <textarea
-              value={sqlQuery}
-              onChange={e => setSqlQuery(e.target.value)}
-              onKeyDown={e => { if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); runSql() } }}
-              rows={8}
-              spellCheck={false}
-              className="w-full px-4 py-3 bg-surface-primary/80 text-text-primary text-sm font-mono resize-y focus:outline-none placeholder-text-secondary/40 leading-relaxed"
-              placeholder="SELECT * FROM live_trades ORDER BY opened_at DESC LIMIT 20;"
-            />
-            <div className="px-4 py-1.5 bg-surface-secondary/30 border-t border-border-color/30 text-[10px] text-text-secondary/50 font-mono">
-              Ctrl+Enter / Cmd+Enter to run · SELECT only
-            </div>
-          </div>
-
-          {/* Error */}
-          {sqlError && (
-            <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-accent-red/5 border border-accent-red/30">
-              <AlertCircle className="w-4 h-4 text-accent-red flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="text-xs font-semibold text-accent-red">Query Error</p>
-                <p className="text-xs text-text-secondary mt-1 font-mono">{sqlError}</p>
-              </div>
-            </div>
-          )}
-
-          {/* Results Table */}
-          {sqlResult && (
-            <div className="rounded-xl border border-border-color/60 overflow-hidden">
-              <div className="flex items-center gap-2 px-4 py-2.5 bg-surface-secondary/60 border-b border-border-color/40">
-                <CheckCircle2 className="w-4 h-4 text-accent-emerald" />
-                <span className="text-xs font-semibold text-accent-emerald">
-                  {sqlResult.rows.length} row{sqlResult.rows.length !== 1 ? 's' : ''} returned
-                </span>
-                {sqlResult.columns.length > 0 && (
-                  <span className="text-[10px] text-text-secondary/60 ml-2">{sqlResult.columns.join(', ')}</span>
-                )}
-              </div>
-              {sqlResult.rows.length === 0 ? (
-                <div className="px-4 py-8 text-center text-text-secondary text-sm">No results</div>
-              ) : (
-                <div className="overflow-x-auto max-h-96">
-                  <table className="w-full text-xs">
-                    <thead className="sticky top-0">
-                      <tr className="bg-surface-secondary/80 border-b border-border-color/40">
-                        {sqlResult.columns.map(col => (
-                          <th key={col} className="text-left px-3 py-2 text-text-secondary font-semibold uppercase tracking-wider whitespace-nowrap">{col}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {sqlResult.rows.map((row, i) => (
-                        <tr key={i} className={`border-b border-border-color/20 ${i % 2 === 0 ? 'bg-surface-primary/30' : 'bg-surface-secondary/20'} hover:bg-surface-secondary/40 transition-colors`}>
-                          {sqlResult.columns.map(col => {
-                            const val = row[col]
-                            return (
-                              <td key={col} className="px-3 py-2 font-mono text-text-primary whitespace-nowrap max-w-xs truncate">
-                                {val === null || val === undefined ? <span className="text-text-secondary/40 italic">null</span>
-                                  : typeof val === 'boolean' ? <span className={val ? 'text-accent-emerald' : 'text-accent-red'}>{String(val)}</span>
-                                  : String(val)}
-                              </td>
-                            )
-                          })}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Schema Reference */}
-          <div className="card-gradient p-6">
-            <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-4 flex items-center gap-2">
-              <Database className="w-4 h-4 text-accent-purple" /> Schema Reference
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-              {[
-                {
-                  table: 'live_trades',
-                  cols: ['id TEXT', 'session_id TEXT', 'exchange TEXT', 'asset TEXT', 'symbol TEXT', 'entry_price NUMERIC', 'exit_price NUMERIC', 'capital_used NUMERIC', 'quantity NUMERIC', 'pnl NUMERIC', 'pnl_pct NUMERIC', 'status TEXT', 'trade_mode TEXT', 'target_exit NUMERIC', 'stop_loss NUMERIC', 'signal TEXT', 'opened_at TIMESTAMPTZ', 'closed_at TIMESTAMPTZ', 'fees NUMERIC', 'order_id TEXT'],
-                },
-                {
-                  table: 'live_api_keys',
-                  cols: ['id UUID', 'session_id TEXT', 'exchange TEXT', 'api_key TEXT', 'api_secret TEXT', 'passphrase TEXT', 'label TEXT', 'is_active BOOLEAN', 'created_at TIMESTAMPTZ', 'updated_at TIMESTAMPTZ'],
-                },
-                {
-                  table: 'live_trading_settings',
-                  cols: ['id UUID', 'session_id TEXT', 'capital NUMERIC', 'pct_per_trade NUMERIC', 'default_exchange TEXT', 'risk_level TEXT', 'enable_auto_trade BOOLEAN', 'max_open_trades INTEGER', 'created_at TIMESTAMPTZ', 'updated_at TIMESTAMPTZ'],
-                },
-                {
-                  table: 'live_auto_logs',
-                  cols: ['id TEXT', 'session_id TEXT', 'message TEXT', 'log_type TEXT', 'exchange TEXT', 'symbol TEXT', 'created_at TIMESTAMPTZ'],
-                },
-              ].map(({ table, cols }) => (
-                <div key={table} className="rounded-lg bg-surface-secondary/40 border border-border-color/40 p-3">
-                  <div className="font-bold text-accent-purple font-mono mb-2">{table}</div>
-                  <div className="space-y-0.5">
-                    {cols.map(col => {
-                      const [name, type] = col.split(' ')
-                      return (
-                        <div key={col} className="flex gap-2">
-                          <span className="font-mono text-text-primary">{name}</span>
-                          <span className="text-text-secondary/60">{type}</span>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
         </div>
       )}
     </div>
