@@ -84,6 +84,8 @@ export interface LiveTradingSettings {
   riskLevel: 'low' | 'medium' | 'high'
   enableAutoTrade: boolean
   maxOpenTrades: number
+  scanIntervalSeconds: number
+  minSignalFilter: 'STRONG_BUY' | 'BUY'
 }
 
 export interface LiveAutoLogEntry {
@@ -111,6 +113,8 @@ export async function saveLiveTradingSettings(settings: LiveTradingSettings): Pr
       risk_level: settings.riskLevel,
       enable_auto_trade: settings.enableAutoTrade,
       max_open_trades: settings.maxOpenTrades,
+      scan_interval_seconds: settings.scanIntervalSeconds,
+      min_signal_filter: settings.minSignalFilter,
     },
     { onConflict: 'session_id' },
   )
@@ -121,7 +125,7 @@ export async function loadLiveTradingSettings(): Promise<LiveTradingSettings | n
   const sessionId = getLiveSessionId()
   const { data, error } = await supabase
     .from('live_trading_settings')
-    .select('capital, pct_per_trade, default_exchange, risk_level, enable_auto_trade, max_open_trades')
+    .select('capital, pct_per_trade, default_exchange, risk_level, enable_auto_trade, max_open_trades, scan_interval_seconds, min_signal_filter')
     .eq('session_id', sessionId)
     .single()
   if (error || !data) return null
@@ -132,6 +136,8 @@ export async function loadLiveTradingSettings(): Promise<LiveTradingSettings | n
     riskLevel: (data.risk_level ?? 'medium') as LiveTradingSettings['riskLevel'],
     enableAutoTrade: Boolean(data.enable_auto_trade),
     maxOpenTrades: Number(data.max_open_trades ?? 3),
+    scanIntervalSeconds: Number(data.scan_interval_seconds ?? 60),
+    minSignalFilter: (data.min_signal_filter ?? 'STRONG_BUY') as LiveTradingSettings['minSignalFilter'],
   }
 }
 

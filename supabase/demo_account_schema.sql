@@ -105,3 +105,10 @@ CREATE POLICY "demo_auto_logs: allow all for own session"
 -- ---------------------------------------------------------------------------
 -- Done! Tables are ready for use with the Demo Account feature.
 -- ---------------------------------------------------------------------------
+
+-- ---------------------------------------------------------------------------
+-- Migration: add max_auto_trades column to demo_accounts
+-- Run these ALTER statements if you already applied the original schema.
+-- ---------------------------------------------------------------------------
+ALTER TABLE demo_accounts
+  ADD COLUMN IF NOT EXISTS max_auto_trades INTEGER NOT NULL DEFAULT 3;
