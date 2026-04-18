@@ -989,7 +989,7 @@ export default function LiveTradingPage() {
               <button
                 onClick={saveSettingsNow}
                 className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent-blue/20 border border-accent-blue/50 text-accent-blue text-xs font-semibold hover:bg-accent-blue/30 transition-all">
-                {settingsSaved ? <Check className="w-3.5 h-3.5" /> : <Settings className="w-3.5 h-3.5" />}
+                {settingsSaved ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Settings className="w-3.5 h-3.5" />}
                 {settingsSaved ? 'Saved!' : 'Save Settings'}
               </button>
               {settingsSaved && <span className="text-[11px] text-accent-emerald">Settings saved to database.</span>}

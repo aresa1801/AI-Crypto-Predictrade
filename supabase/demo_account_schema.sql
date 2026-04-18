@@ -112,3 +112,33 @@ CREATE POLICY "demo_auto_logs: allow all for own session"
 -- ---------------------------------------------------------------------------
 ALTER TABLE demo_accounts
   ADD COLUMN IF NOT EXISTS max_auto_trades INTEGER NOT NULL DEFAULT 3;
+
+-- ---------------------------------------------------------------------------
+-- Migration: add risk_level, scan_interval_seconds, min_signal_filter columns
+-- Run these ALTER statements if you already applied the original schema.
+-- ---------------------------------------------------------------------------
+ALTER TABLE demo_accounts
+  ADD COLUMN IF NOT EXISTS risk_level TEXT NOT NULL DEFAULT 'medium',
+  ADD COLUMN IF NOT EXISTS scan_interval_seconds INTEGER NOT NULL DEFAULT 300,
+  ADD COLUMN IF NOT EXISTS min_signal_filter TEXT NOT NULL DEFAULT 'STRONG_BUY';
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'demo_accounts_risk_level_check'
+  ) THEN
+    ALTER TABLE demo_accounts
+      ADD CONSTRAINT demo_accounts_risk_level_check
+        CHECK (risk_level IN ('low', 'medium', 'high'));
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'demo_accounts_min_signal_filter_check'
+  ) THEN
+    ALTER TABLE demo_accounts
+      ADD CONSTRAINT demo_accounts_min_signal_filter_check
+        CHECK (min_signal_filter IN ('STRONG_BUY', 'BUY'));
+  END IF;
+END
+$$;
