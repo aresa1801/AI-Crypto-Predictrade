@@ -21,16 +21,18 @@ $$ LANGUAGE plpgsql;
 --    Capital config and risk preferences per session.
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS live_trading_settings (
-  id                UUID    PRIMARY KEY DEFAULT gen_random_uuid(),
-  session_id        TEXT    NOT NULL UNIQUE,
-  capital           NUMERIC(18, 2) NOT NULL DEFAULT 1000,
-  pct_per_trade     NUMERIC(5, 2)  NOT NULL DEFAULT 5,
-  default_exchange  TEXT    NOT NULL DEFAULT 'binance',
-  risk_level        TEXT    NOT NULL DEFAULT 'medium' CHECK (risk_level IN ('low', 'medium', 'high')),
-  enable_auto_trade BOOLEAN NOT NULL DEFAULT false,
-  max_open_trades   INTEGER NOT NULL DEFAULT 3,
-  created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at        TIMESTAMPTZ NOT NULL DEFAULT now()
+  id                    UUID    PRIMARY KEY DEFAULT gen_random_uuid(),
+  session_id            TEXT    NOT NULL UNIQUE,
+  capital               NUMERIC(18, 2) NOT NULL DEFAULT 1000,
+  pct_per_trade         NUMERIC(5, 2)  NOT NULL DEFAULT 5,
+  default_exchange      TEXT    NOT NULL DEFAULT 'binance',
+  risk_level            TEXT    NOT NULL DEFAULT 'medium' CHECK (risk_level IN ('low', 'medium', 'high')),
+  enable_auto_trade     BOOLEAN NOT NULL DEFAULT false,
+  max_open_trades       INTEGER NOT NULL DEFAULT 3,
+  min_signal_filter     TEXT    NOT NULL DEFAULT 'STRONG_BUY' CHECK (min_signal_filter IN ('STRONG_BUY', 'BUY')),
+  scan_interval_seconds INTEGER NOT NULL DEFAULT 60,
+  created_at            TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at            TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 DROP TRIGGER IF EXISTS live_trading_settings_updated_at ON live_trading_settings;
@@ -165,4 +167,26 @@ GRANT EXECUTE ON FUNCTION execute_sql(TEXT) TO authenticated;
 -- ---------------------------------------------------------------------------
 -- Done! All live trading tables are ready.
 -- Run this schema AFTER demo_account_schema.sql if using both features.
+
+-- ---------------------------------------------------------------------------
+-- Migration: add server-side bot columns to live_trading_settings
+-- Run these ALTER statements if you already applied the original schema.
+-- ---------------------------------------------------------------------------
+ALTER TABLE live_trading_settings
+  ADD COLUMN IF NOT EXISTS min_signal_filter     TEXT    NOT NULL DEFAULT 'STRONG_BUY',
+  ADD COLUMN IF NOT EXISTS scan_interval_seconds INTEGER NOT NULL DEFAULT 60;
+
+-- Add the check constraint only if it does not yet exist (safe to re-run).
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'live_trading_settings_min_signal_filter_check'
+  ) THEN
+    ALTER TABLE live_trading_settings
+      ADD CONSTRAINT live_trading_settings_min_signal_filter_check
+        CHECK (min_signal_filter IN ('STRONG_BUY', 'BUY'));
+  END IF;
+END
+$$;
 -- ---------------------------------------------------------------------------

@@ -27,6 +27,9 @@ import {
   saveLiveApiKey,
   deleteLiveApiKey,
   executeLiveSql,
+  startLiveServerBot,
+  stopLiveServerBot,
+  getLiveServerBotStatus,
   LiveTrade,
   LiveAutoLogEntry,
   LiveApiKey,
@@ -184,6 +187,8 @@ export default function LiveTradingPage() {
   const [nextCheckIn, setNextCheckIn] = useState(0)
   const [scanInterval, setScanInterval] = useState(60) // seconds
   const [minSignalFilter, setMinSignalFilter] = useState<'STRONG_BUY' | 'BUY'>('STRONG_BUY')
+  const [serverBotRunning, setServerBotRunning] = useState(false)
+  const [serverBotError, setServerBotError] = useState('')
 
   // API Keys
   const [apiKeys, setApiKeys] = useState<LiveApiKey[]>([])
@@ -207,6 +212,7 @@ export default function LiveTradingPage() {
   const settingsSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const autoBotIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const countdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const serverBotPollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const autoBotActiveRef = useRef(false)
   const tradesRef = useRef<LiveTrade[]>([])
   const scanningRef = useRef(false)
@@ -215,15 +221,16 @@ export default function LiveTradingPage() {
   useEffect(() => { tradesRef.current = trades }, [trades])
 
   // ---------------------------------------------------------------------------
-  // Hydrate from Supabase
+  // Hydrate from Supabase + check server bot status
   // ---------------------------------------------------------------------------
   useEffect(() => {
     async function hydrate() {
-      const [settings, persistedTrades, persistedLogs, keys] = await Promise.all([
+      const [settings, persistedTrades, persistedLogs, keys, botStatus] = await Promise.all([
         loadLiveTradingSettings(),
         loadLiveTrades(),
         loadLiveAutoLogs(),
         loadLiveApiKeys(),
+        getLiveServerBotStatus(),
       ])
       if (settings) {
         setCapital(settings.capital)
@@ -237,9 +244,44 @@ export default function LiveTradingPage() {
       if (persistedTrades.length > 0) setTrades(persistedTrades)
       if (persistedLogs.length > 0) setAutoLog(persistedLogs)
       setApiKeys(keys)
+
+      // Sync server bot running state
+      if (botStatus?.is_running) {
+        setServerBotRunning(true)
+        setAutoBotActive(true)
+        autoBotActiveRef.current = true
+        if (botStatus.min_signal && (botStatus.min_signal === 'STRONG_BUY' || botStatus.min_signal === 'BUY')) {
+          setMinSignalFilter(botStatus.min_signal as 'STRONG_BUY' | 'BUY')
+        }
+        if (botStatus.scan_interval_seconds) setScanInterval(botStatus.scan_interval_seconds)
+        if (botStatus.max_auto_trades) setMaxAutoTrades(botStatus.max_auto_trades)
+      }
     }
     hydrate()
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Poll server bot status every 30 seconds to refresh trade list + sync state
+  useEffect(() => {
+    serverBotPollRef.current = setInterval(async () => {
+      const status = await getLiveServerBotStatus()
+      const running = status?.is_running ?? false
+      setServerBotRunning(running)
+      if (running !== autoBotActiveRef.current) {
+        autoBotActiveRef.current = running
+        setAutoBotActive(running)
+      }
+      // Reload trades from Supabase so server-opened trades appear in the list
+      if (running) {
+        const fresh = await loadLiveTrades()
+        setTrades(fresh)
+        const freshLogs = await loadLiveAutoLogs()
+        setAutoLog(freshLogs)
+      }
+    }, 30_000)
+    return () => {
+      if (serverBotPollRef.current) clearInterval(serverBotPollRef.current)
+    }
   }, [])
 
   // ---------------------------------------------------------------------------
@@ -623,6 +665,7 @@ export default function LiveTradingPage() {
   }, [])  // no state deps — reads via closure params & refs
 
   function stopAutoBot() {
+    // Stop client-side intervals
     if (autoBotIntervalRef.current) { clearInterval(autoBotIntervalRef.current); autoBotIntervalRef.current = null }
     if (countdownIntervalRef.current) { clearInterval(countdownIntervalRef.current); countdownIntervalRef.current = null }
     autoBotActiveRef.current = false
@@ -630,6 +673,11 @@ export default function LiveTradingPage() {
     setNextCheckIn(0)
     setBotScanning(false)
     scanningRef.current = false
+
+    // Stop server-side bot
+    stopLiveServerBot().then(() => setServerBotRunning(false)).catch(() => {})
+    setServerBotError('')
+
     const stopEntry: LiveAutoLogEntry = {
       id: `livelog-${Date.now()}-${Math.random()}`,
       timestamp: new Date(),
@@ -640,7 +688,7 @@ export default function LiveTradingPage() {
     saveLiveAutoLog(stopEntry)
   }
 
-  function startAutoBot(opts: {
+  async function startAutoBot(opts: {
     exchange: string
     capitalPerTrade: number
     availableCapital: number
@@ -651,33 +699,68 @@ export default function LiveTradingPage() {
     if (autoBotActiveRef.current) return
     autoBotActiveRef.current = true
     setAutoBotActive(true)
+    setServerBotError('')
 
     const startEntry: LiveAutoLogEntry = {
       id: `livelog-${Date.now()}-${Math.random()}`,
       timestamp: new Date(),
-      message: `🤖 Auto Trade Bot started — scanning every ${opts.intervalSec}s for ${opts.minSignal.replace('_', ' ')} signals on ${opts.exchange}.`,
+      message: `🤖 Auto Trade Bot started — scanning every ${opts.intervalSec}s for ${opts.minSignal.replace('_', ' ')} signals on ${opts.exchange}. Bot runs on the server and will continue even if you close this page.`,
       type: 'info',
       exchange: opts.exchange,
     }
     setAutoLog(prev => [startEntry, ...prev])
     saveLiveAutoLog(startEntry)
 
-    // Run immediately, then on interval
-    runAutoScan(opts)
-    setNextCheckIn(opts.intervalSec)
+    // Start server-side bot (persists even when browser closes)
+    const result = await startLiveServerBot({
+      capital,
+      pct_per_trade: pctPerTrade,
+      max_auto_trades: opts.maxOpenTrades,
+      exchange: opts.exchange,
+      min_signal: opts.minSignal,
+      scan_interval_seconds: opts.intervalSec,
+    })
+    if (result.success) {
+      setServerBotRunning(true)
+      const serverEntry: LiveAutoLogEntry = {
+        id: `livelog-${Date.now()}-${Math.random()}`,
+        timestamp: new Date(),
+        message: `✅ [Server] ${result.message} — bot is now running server-side and will continue when you close this page.`,
+        type: 'success',
+        exchange: opts.exchange,
+      }
+      setAutoLog(prev => [serverEntry, ...prev])
+      saveLiveAutoLog(serverEntry)
+    } else {
+      setServerBotError(result.message)
+      // Fall back to client-side scanning
+      const fallbackEntry: LiveAutoLogEntry = {
+        id: `livelog-${Date.now()}-${Math.random()}`,
+        timestamp: new Date(),
+        message: `⚠️ Could not start server-side bot (${result.message}). Running in browser only — bot will stop if you close this page.`,
+        type: 'warning',
+        exchange: opts.exchange,
+      }
+      setAutoLog(prev => [fallbackEntry, ...prev])
+      saveLiveAutoLog(fallbackEntry)
 
-    countdownIntervalRef.current = setInterval(() => {
-      setNextCheckIn(prev => {
-        if (prev <= 1) return opts.intervalSec
-        return prev - 1
-      })
-    }, 1000)
-
-    autoBotIntervalRef.current = setInterval(() => {
-      if (!autoBotActiveRef.current) return
+      // Run client-side fallback
       runAutoScan(opts)
       setNextCheckIn(opts.intervalSec)
-    }, opts.intervalSec * 1000)
+
+      countdownIntervalRef.current = setInterval(() => {
+        setNextCheckIn(prev => {
+          if (prev <= 1) return opts.intervalSec
+          return prev - 1
+        })
+      }, 1000)
+
+      autoBotIntervalRef.current = setInterval(() => {
+        if (!autoBotActiveRef.current) return
+        runAutoScan(opts)
+        setNextCheckIn(opts.intervalSec)
+      }, opts.intervalSec * 1000)
+    }
   }
 
   // Cleanup on unmount
@@ -1110,12 +1193,17 @@ export default function LiveTradingPage() {
                       <span className={`text-sm font-bold ${autoBotActive ? 'text-accent-red' : 'text-text-secondary'}`}>
                         {autoBotActive ? 'Auto Trade Bot — RUNNING' : 'Auto Trade Bot — STOPPED'}
                       </span>
+                      {autoBotActive && serverBotRunning && (
+                        <span className="flex items-center gap-1 text-[10px] font-semibold text-accent-emerald px-2 py-0.5 rounded-full bg-accent-emerald/10 border border-accent-emerald/30">
+                          <Activity className="w-2.5 h-2.5" /> Server-side
+                        </span>
+                      )}
                       {autoBotActive && botScanning && (
                         <span className="flex items-center gap-1 text-[10px] font-semibold text-accent-amber px-2 py-0.5 rounded-full bg-accent-amber/10 border border-accent-amber/30">
                           <RefreshCw className="w-2.5 h-2.5 animate-spin" /> Scanning…
                         </span>
                       )}
-                      {autoBotActive && !botScanning && nextCheckIn > 0 && (
+                      {autoBotActive && !serverBotRunning && !botScanning && nextCheckIn > 0 && (
                         <span className="flex items-center gap-1 text-[10px] text-text-secondary/70 px-2 py-0.5 rounded-full bg-surface-secondary/60 border border-border-color/40">
                           <Timer className="w-2.5 h-2.5" /> Next scan in {nextCheckIn}s
                         </span>
@@ -1123,7 +1211,9 @@ export default function LiveTradingPage() {
                     </div>
                     <p className="text-[11px] text-text-secondary/60 mt-0.5">
                       {autoBotActive
-                        ? `Scanning ${defaultExchange} for ${minSignalFilter.replace('_', ' ')} signals · ${minSignalFilter === 'STRONG_BUY' ? 'Only strongest signals' : 'BUY+ signals'}`
+                        ? serverBotRunning
+                          ? `Running on the server — continues even when this page is closed · ${defaultExchange} · ${minSignalFilter.replace('_', ' ')} signals`
+                          : `Scanning ${defaultExchange} for ${minSignalFilter.replace('_', ' ')} signals · ${minSignalFilter === 'STRONG_BUY' ? 'Only strongest signals' : 'BUY+ signals'}`
                         : 'Configure settings below and press Start to activate the bot'}
                     </p>
                   </div>
@@ -1131,6 +1221,14 @@ export default function LiveTradingPage() {
                     <Radio className="w-4 h-4 text-accent-red animate-pulse flex-shrink-0" />
                   )}
                 </div>
+
+                {/* Server bot error banner */}
+                {serverBotError && (
+                  <div className="flex items-center gap-2 text-accent-amber text-xs bg-accent-amber/10 border border-accent-amber/30 rounded-lg px-3 py-2 mb-4">
+                    <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span>Server bot unavailable: {serverBotError}. Running in browser — bot stops if this page closes.</span>
+                  </div>
+                )}
 
                 <div className="flex items-center gap-2 mb-4">
                   <Bot className="w-4 h-4 text-accent-red" />
@@ -1148,10 +1246,12 @@ export default function LiveTradingPage() {
                         <Zap className="w-3.5 h-3.5" /> How Auto Trade Bot works
                       </div>
                       <ul className="space-y-1 text-[11px] text-text-secondary">
-                        <li className="flex items-start gap-1.5"><ChevronRight className="w-3 h-3 mt-0.5 text-accent-red flex-shrink-0" /> Runs continuously — scans on your chosen interval</li>
+                        <li className="flex items-start gap-1.5"><ChevronRight className="w-3 h-3 mt-0.5 text-accent-red flex-shrink-0" /> <span className="text-accent-emerald font-semibold">Runs on the server</span> — continues even when your browser is closed or computer is turned off</li>
+                        <li className="flex items-start gap-1.5"><ChevronRight className="w-3 h-3 mt-0.5 text-accent-red flex-shrink-0" /> Scans for new signals on your chosen interval</li>
                         <li className="flex items-start gap-1.5"><ChevronRight className="w-3 h-3 mt-0.5 text-accent-red flex-shrink-0" /> Only buys assets with the selected minimum signal strength</li>
                         <li className="flex items-start gap-1.5"><ChevronRight className="w-3 h-3 mt-0.5 text-accent-red flex-shrink-0" /> Auto-sets <strong className="text-text-primary">Target 1</strong> as exit and system-calculated <strong className="text-text-primary">Stop Loss</strong></li>
                         <li className="flex items-start gap-1.5"><ChevronRight className="w-3 h-3 mt-0.5 text-accent-red flex-shrink-0" /> Skips assets already in open positions to avoid duplicates</li>
+                        <li className="flex items-start gap-1.5"><ChevronRight className="w-3 h-3 mt-0.5 text-accent-red flex-shrink-0" /> Resumes automatically after server restart — state is saved to Supabase</li>
                         <li className="flex items-start gap-1.5"><ChevronRight className="w-3 h-3 mt-0.5 text-accent-red flex-shrink-0" /> Stops only when you press <strong className="text-text-primary">Stop Auto Trade</strong></li>
                         <li className="flex items-start gap-1.5"><ChevronRight className="w-3 h-3 mt-0.5 text-accent-red flex-shrink-0" /> <span className="text-accent-amber font-semibold">Note:</span> real orders require valid CEX API keys</li>
                       </ul>
