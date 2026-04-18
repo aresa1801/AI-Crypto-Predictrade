@@ -12,7 +12,7 @@ const navItems = [
   { href: '/opportunity-buy', label: 'Opportunity Buy',  icon: ShoppingCart, dotColor: 'bg-accent-emerald', iconColor: 'text-accent-emerald', indicatorColor: 'bg-accent-emerald' },
   { href: '/risk',            label: 'Risk Analysis',    icon: Calculator,  dotColor: 'bg-accent-amber',   iconColor: 'text-accent-amber',   indicatorColor: 'bg-accent-amber'   },
   { href: '/backtest',        label: 'Backtest',         icon: RotateCw,       dotColor: 'bg-accent-purple',  iconColor: 'text-accent-purple',  indicatorColor: 'bg-accent-purple'  },
-  { href: '/demo-account',   label: 'Demo Account',     icon: FlaskConical,   dotColor: 'bg-accent-indigo',  iconColor: 'text-accent-indigo',  indicatorColor: 'bg-accent-indigo'  },
+  { href: '/demo-account',   label: 'Demo Trade',       icon: FlaskConical,   dotColor: 'bg-accent-indigo',  iconColor: 'text-accent-indigo',  indicatorColor: 'bg-accent-indigo'  },
   { href: '/settings',        label: 'Settings',         icon: Settings,       dotColor: 'bg-accent-teal',    iconColor: 'text-accent-teal',    indicatorColor: 'bg-accent-teal'    },
 ]
 

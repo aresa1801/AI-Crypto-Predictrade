@@ -206,3 +206,61 @@ export async function clearAutoLogs(): Promise<void> {
   const sessionId = getSessionId()
   await supabase.from('demo_auto_logs').delete().eq('session_id', sessionId)
 }
+
+// ---------------------------------------------------------------------------
+// Backend bot integration
+// ---------------------------------------------------------------------------
+
+const BACKEND_URL =
+  process.env.NEXT_PUBLIC_BACKEND_URL ?? process.env.NEXT_PUBLIC_API_URL ?? ''
+
+/** Start the server-side auto-trade bot. Returns true on success. */
+export async function startServerBot(opts: {
+  capital: number
+  pctPerTrade: number
+  maxAutoTrades: number
+}): Promise<boolean> {
+  if (!BACKEND_URL) return false
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/v1/demo/start`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        session_id: getSessionId(),
+        capital: opts.capital,
+        pct_per_trade: opts.pctPerTrade,
+        max_auto_trades: opts.maxAutoTrades,
+      }),
+    })
+    return res.ok
+  } catch {
+    return false
+  }
+}
+
+/** Stop the server-side auto-trade bot. Returns true on success. */
+export async function stopServerBot(): Promise<boolean> {
+  if (!BACKEND_URL) return false
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/v1/demo/stop`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session_id: getSessionId() }),
+    })
+    return res.ok
+  } catch {
+    return false
+  }
+}
+
+/** Get server-side bot status. */
+export async function getServerBotStatus(): Promise<{ is_running: boolean; started_at: string | null } | null> {
+  if (!BACKEND_URL) return null
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/v1/demo/status/${getSessionId()}`)
+    if (!res.ok) return null
+    return res.json()
+  } catch {
+    return null
+  }
+}

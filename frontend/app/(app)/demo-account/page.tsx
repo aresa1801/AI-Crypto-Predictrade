@@ -19,6 +19,9 @@ import {
   loadAutoLogs,
   saveAutoLog,
   clearAutoLogs,
+  startServerBot,
+  stopServerBot,
+  getServerBotStatus,
 } from '@/lib/api/demo-account'
 
 // ---------------------------------------------------------------------------
@@ -157,6 +160,7 @@ export default function DemoAccountPage() {
   const [maxAutoTrades, setMaxAutoTrades] = useState(3)
   const [autoLog, setAutoLog] = useState<AutoTradeLogEntry[]>([])
   const [nextScanAt, setNextScanAt] = useState<Date | null>(null)
+  const [serverBotRunning, setServerBotRunning] = useState(false)
 
   // Debounce timer ref for capital settings persistence
   const settingsSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -188,6 +192,10 @@ export default function DemoAccountPage() {
       if (persistedLogs.length > 0) setAutoLog(persistedLogs)
     }
     hydrateFromSupabase()
+    // Check whether the server bot is already running for this session
+    getServerBotStatus().then(status => {
+      if (status?.is_running) setServerBotRunning(true)
+    })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -481,6 +489,14 @@ export default function DemoAccountPage() {
       setNextScanAt(next)
       runAutoTradeCycle()
     }, AUTO_TRADE_POLL_MS)
+
+    // Also start the server-side bot so it keeps running when browser is closed
+    startServerBot({ capital, pctPerTrade, maxAutoTrades }).then(ok => {
+      if (ok) {
+        setServerBotRunning(true)
+        addAutoLog('☁️ Server bot started — trading continues even when this page is closed.', 'info')
+      }
+    })
   }
 
   function stopAutoTrade() {
@@ -491,6 +507,11 @@ export default function DemoAccountPage() {
     setAutoRunning(false)
     setNextScanAt(null)
     addAutoLog('🛑 Auto Trade bot STOPPED by user.', 'info')
+
+    // Stop server-side bot as well
+    stopServerBot().then(ok => {
+      if (ok) setServerBotRunning(false)
+    })
   }
 
   // ---------------------------------------------------------------------------
@@ -506,7 +527,7 @@ export default function DemoAccountPage() {
           <FlaskConical className="w-6 h-6 text-white" />
         </div>
         <div>
-          <h1 className="text-2xl lg:text-3xl font-bold gradient-text-blue">Demo Account</h1>
+          <h1 className="text-2xl lg:text-3xl font-bold gradient-text-blue">Demo Trade</h1>
           <p className="text-sm text-text-secondary">Paper-trade with virtual USDT — no real funds at risk</p>
         </div>
       </div>
@@ -848,6 +869,11 @@ export default function DemoAccountPage() {
                   <span className="w-2 h-2 rounded-full bg-accent-emerald animate-pulse" /> BOT ACTIVE
                 </span>
               )}
+              {serverBotRunning && (
+                <span className="flex items-center gap-1.5 ml-1 text-[10px] font-semibold text-accent-blue">
+                  <span className="w-2 h-2 rounded-full bg-accent-blue animate-pulse" /> SERVER BOT ON
+                </span>
+              )}
               <span className="ml-auto text-[10px] normal-case font-normal text-text-secondary/50">
                 STRONG_BUY only · Exit = T1 · SL = System
               </span>
@@ -866,6 +892,7 @@ export default function DemoAccountPage() {
                     <li className="flex items-start gap-1.5"><ChevronRight className="w-3 h-3 mt-0.5 text-accent-emerald flex-shrink-0" /> Only buys when a strong signal appears — skips BUY and ACCUMULATE signals</li>
                     <li className="flex items-start gap-1.5"><ChevronRight className="w-3 h-3 mt-0.5 text-accent-emerald flex-shrink-0" /> Skips assets already held in open trades to avoid duplicate positions</li>
                     <li className="flex items-start gap-1.5"><ChevronRight className="w-3 h-3 mt-0.5 text-accent-emerald flex-shrink-0" /> Sets <span className="text-accent-emerald font-semibold">Exit = Target 1</span> and <span className="text-accent-red font-semibold">Stop Loss</span> automatically from system data</li>
+                    <li className="flex items-start gap-1.5"><ChevronRight className="w-3 h-3 mt-0.5 text-accent-blue flex-shrink-0" /> ☁️ <span className="text-accent-blue font-semibold">Server bot</span> keeps trading even when this browser tab is closed</li>
                     <li className="flex items-start gap-1.5"><ChevronRight className="w-3 h-3 mt-0.5 text-accent-emerald flex-shrink-0" /> Stops only when you click <span className="font-semibold">Stop Auto Trade</span></li>
                   </ul>
                 </div>
@@ -918,6 +945,14 @@ export default function DemoAccountPage() {
                   <div className="flex items-center gap-2 text-xs text-text-secondary bg-surface-secondary/40 border border-border-color/40 rounded-lg px-3 py-2">
                     <span className="w-2 h-2 rounded-full bg-accent-emerald animate-pulse flex-shrink-0" />
                     Bot running · Next scan at <span className="font-mono text-text-primary">{nextScanAt.toLocaleTimeString()}</span>
+                  </div>
+                )}
+
+                {/* Server bot status indicator */}
+                {serverBotRunning && (
+                  <div className="flex items-center gap-2 text-xs text-accent-blue bg-accent-blue/5 border border-accent-blue/20 rounded-lg px-3 py-2">
+                    <span className="w-2 h-2 rounded-full bg-accent-blue animate-pulse flex-shrink-0" />
+                    ☁️ Server bot active — trading continues when browser is closed
                   </div>
                 )}
 

@@ -18,7 +18,8 @@ from app.api.routes import (
     trading_router,
     market_router,
     risk_router,
-    websocket_router
+    websocket_router,
+    demo_auto_trade_router,
 )
 
 # Configure logging
@@ -45,6 +46,13 @@ async def lifespan(app: FastAPI):
     # Initialize Redis
     # from app.services.cache import init_redis
     # await init_redis()
+
+    # Resume any demo auto-trade sessions that were active before a restart
+    from app.services.demo_auto_trade import resume_active_sessions
+    await resume_active_sessions(
+        settings.supabase_url,
+        settings.supabase_service_key.get_secret_value(),
+    )
     
     yield
     
@@ -114,6 +122,7 @@ app.include_router(trading_router, prefix=f"/api/{settings.api_version}")
 app.include_router(market_router, prefix=f"/api/{settings.api_version}")
 app.include_router(risk_router, prefix=f"/api/{settings.api_version}")
 app.include_router(websocket_router, prefix=f"/api/{settings.api_version}")
+app.include_router(demo_auto_trade_router, prefix=f"/api/{settings.api_version}")
 
 
 # Health check endpoint
