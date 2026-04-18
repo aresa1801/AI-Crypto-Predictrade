@@ -66,7 +66,12 @@ function formatPct(n: number) {
   return (n >= 0 ? '+' : '') + n.toFixed(2) + '%'
 }
 
-const AUTO_TRADE_POLL_MS = 5 * 60 * 1000 // 5 minutes between scan cycles
+function formatScanInterval(seconds: number): string {
+  if (seconds < 60) return `${seconds}s`
+  if (seconds < 3600) return `${Math.round(seconds / 60)} min`
+  return `${Math.round(seconds / 3600)}h`
+}
+
 
 // ---------------------------------------------------------------------------
 // Sub-components
@@ -511,8 +516,7 @@ export default function DemoAccountPage() {
     const intervalMs = scanInterval * 1000
     const nextTime = new Date(Date.now() + intervalMs)
     setNextScanAt(nextTime)
-    const intervalLabel = scanInterval < 60 ? `${scanInterval}s` : scanInterval < 3600 ? `${Math.round(scanInterval / 60)} min` : `${Math.round(scanInterval / 3600)}h`
-    addAutoLog(`🤖 Auto Trade bot STARTED — scanning every ${intervalLabel} for ${minSignalFilter.replace('_', ' ')} opportunities.`, 'info')
+    addAutoLog(`🤖 Auto Trade bot STARTED — scanning every ${formatScanInterval(scanInterval)} for ${minSignalFilter.replace('_', ' ')} opportunities.`, 'info')
     // Run first cycle immediately, then schedule recurring scans
     runAutoTradeCycle()
     autoIntervalRef.current = setInterval(() => {
@@ -637,7 +641,7 @@ export default function DemoAccountPage() {
       {/* ── Capital Config ───────────────────────────────────────────────────── */}
       <section className="card-gradient p-6">
         <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-4 flex items-center gap-2">
-          <DollarSign className="w-4 h-4 text-accent-blue" /> Trading Settings
+          <DollarSign className="w-4 h-4 text-accent-blue" /> Trading Configuration
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {/* USDT to Trade */}
